@@ -34,7 +34,7 @@ function Reset() {
       const data = await response.json();
 
       if (response.ok) {
-        navigate("/");
+        navigate("/login");
       } else {
         setErrors([
           data.message ||

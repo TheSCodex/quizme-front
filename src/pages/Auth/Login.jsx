@@ -30,7 +30,7 @@ function Login() {
         if (rememberMe) {
           localStorage.setItem("authToken", data.token);
         }
-        navigate("/app/home");
+        navigate("/");
       } else {
         console.log(data.message);
         setErrors([

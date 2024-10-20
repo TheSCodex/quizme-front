@@ -33,7 +33,7 @@ function Register() {
       const data = await response.json();
 
       if (response.ok) {
-        navigate("/");
+        navigate("/login");
       } else {
         console.log(data.message);
         setErrors([

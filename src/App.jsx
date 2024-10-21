@@ -5,6 +5,8 @@ import Register from "./pages/Auth/Register.jsx";
 import Home from "./pages/Home.jsx";
 import Recover from "./pages/Auth/Recover.jsx";
 import Reset from "./pages/Auth/Reset.jsx";
+import Templates from "./pages/Templates/Templates.jsx";
+import TemplateForm from "./pages/Templates/TemplateForm.jsx";
 
 const AppRoutes = () => {
   let routes = useRoutes([
@@ -13,7 +15,8 @@ const AppRoutes = () => {
       element: <Layout />,
       children: [
         { path: "", element: <Home /> },
-
+        { path: "templates", element: <Templates /> },
+        { path: "templates/new", element: <TemplateForm /> },
       ],
     },
     { path: "login", element: <Login /> },

@@ -1,17 +1,22 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { EditorState } from "draft-js";
 import { Editor } from "react-draft-wysiwyg";
 import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
 import "draft-js/dist/Draft.css";
+import { useDropzone } from "react-dropzone";
+import { IconTrash } from "@tabler/icons-react";
 
 function TemplateForm() {
   const [editorState, setEditorState] = useState(EditorState.createEmpty());
   const [questions, setQuestions] = useState([]);
   const [newQuestion, setNewQuestion] = useState({
-    type: "text", // default question type
+    type: "text",
     question: "",
-    options: [], // only relevant for multiple choice
+    options: [],
   });
+  const [image, setImage] = useState(null);
+  const [errors, setErrors] = useState([]);
+  const [accessType, setAccessType] = useState("");
 
   const handleEditorChange = (state) => {
     setEditorState(state);
@@ -26,7 +31,7 @@ function TemplateForm() {
   const handleAddQuestion = () => {
     setQuestions([...questions, { ...newQuestion }]);
     setNewQuestion({
-      type: "text", // reset after adding
+      type: "text",
       question: "",
       options: [],
     });
@@ -62,13 +67,77 @@ function TemplateForm() {
     setQuestions(newQuestions);
   };
 
+  const onDrop = useCallback((acceptedFiles, fileRejections) => {
+    if (fileRejections.length > 0) {
+      setErrors("Only image files are allowed.");
+      return;
+    }
+
+    const file = acceptedFiles[0];
+    file.preview = URL.createObjectURL(file);
+    setImage(file);
+    setErrors(null);
+  }, []);
+
+  const { getRootProps, getInputProps } = useDropzone({
+    onDrop,
+    accept: {
+      "image/*": [".jpeg", ".jpg", ".png", ".gif"],
+    },
+    maxFiles: 1,
+    onDropRejected: () => setErrors("Only image files are allowed."),
+  });
+
+  const removeImage = (e) => {
+    e.stopPropagation();
+    setImage(null);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData();
+    formData.append("title", e.target.title.value);
+    formData.append("category", e.target.category.value);
+    formData.append("accessType", accessType);
+    formData.append(
+      "description",
+      JSON.stringify(editorState.getCurrentContent())
+    );
+    formData.append("questions", JSON.stringify(questions));
+
+    if (image) {
+      formData.append("image", image);
+    }
+
+    try {
+      const response = await fetch(import.meta.env.VITE_API_TEMPLATES_ADD, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setErrors(errorData.message || "Something went wrong");
+      } else {
+        // Handle successful submission (e.g., redirect or show a success message)
+      }
+    } catch (error) {
+      setErrors("An unexpected error occurred. Please try again later.");
+    }
+  };
+
   return (
     <div>
       <p className="font-rubik">New Template</p>
-      <form className="w-full mt-6 bg-white rounded-md shadow-md p-4 grid grid-cols-4 gap-4">
+      <form
+        className="w-full mt-6 bg-white rounded-md shadow-md p-8 grid grid-cols-4 gap-4"
+        onSubmit={handleSubmit}
+      >
         <section className="col-span-2">
           <label className="font-rubik">Title</label>
           <input
+            name="title"
             type="text"
             className="mt-2 border border-black/15 rounded-sm p-2 w-full"
           />
@@ -76,7 +145,7 @@ function TemplateForm() {
         <section>
           <label className="font-rubik">Category</label>
           <select
-            type="text"
+            name="category"
             className="mt-2 border border-black/15 rounded-sm p-2 w-full"
           >
             <option>Open this select menu</option>
@@ -90,10 +159,11 @@ function TemplateForm() {
         <section>
           <label className="font-rubik">Access type</label>
           <select
-            type="text"
+            value={accessType}
+            onChange={(e) => setAccessType(e.target.value)} // Update access type state
             className="mt-2 border border-black/15 rounded-sm p-2 w-full"
           >
-            <option>Open this select menu</option>
+            <option value="">Select Access Type</option>
             <option value="public">Public</option>
             <option value="private">Private</option>
           </select>
@@ -160,65 +230,93 @@ function TemplateForm() {
                   />
                   <button
                     type="button"
-                    className="ml-2 text-red-500 absolute right-5"
+                    className="absolute right-[10px] bottom-[15px]"
                     onClick={() => handleRemoveQuestion(index)}
                   >
-                    X
+                    <IconTrash stroke={2} />
                   </button>
                 </div>
                 <select
                   value={question.type}
                   onChange={(e) => handleQuestionTypeChange(e, index)}
-                  className="border border-black/15 rounded-sm p-2 w-full"
+                  className="border border-black/15 rounded-sm p-2 w-full mb-2"
                 >
                   <option value="text">Text</option>
                   <option value="multiple-choice">Multiple Choice</option>
-                  <option value="number">Number</option>
                 </select>
-
                 {question.type === "multiple-choice" && (
-                  <div className="mt-2">
-                    <div className="flex items-center">
-                      <p>Options:</p>
-                      <button
-                        type="button"
-                        className="text-blue-500 ml-2 text-2xl font-bold"
-                        onClick={() => handleAddOption(index)}
+                  <div>
+                    {question.options.map((option, optionIndex) => (
+                      <div
+                        key={optionIndex}
+                        className="flex items-center relative"
                       >
-                        +
-                      </button>
-                    </div>
-                    {question.options.map((option, optIndex) => (
-                      <div key={optIndex} className="relative flex items-center mb-2">
                         <input
                           type="text"
                           value={option}
                           onChange={(e) =>
-                            handleOptionChange(e, index, optIndex)
+                            handleOptionChange(e, index, optionIndex)
                           }
-                          placeholder={`Option ${optIndex + 1}`}
-                          className="border border-black/15 rounded-sm p-2 w-full"
+                          placeholder="Option"
+                          className="border border-black/15 rounded-sm p-2 w-full mb-2"
                         />
                         <button
                           type="button"
-                          className="ml-2 text-red-500 absolute right-5"
-                          onClick={() => handleRemoveOption(index, optIndex)}
+                          onClick={() => handleRemoveOption(index, optionIndex)}
+                          className="absolute right-[10px] bottom-[15px]"
                         >
-                          X
+                          <IconTrash stroke={2} />
                         </button>
                       </div>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => handleAddOption(index)}
+                      className="text-blue-500"
+                    >
+                      Add Option
+                    </button>
                   </div>
                 )}
               </div>
             ))}
+            <button
+              type="button"
+              onClick={handleAddQuestion}
+              className="text-blue-500"
+            >
+              Add Question
+            </button>
           </div>
-          <button
-            type="button"
-            className="bg-[#117acd] rounded-md text-white p-2 mt-2"
-            onClick={handleAddQuestion}
+        </section>
+        <section className="col-span-4">
+          <div
+            {...getRootProps()}
+            className="border border-black/15 rounded-sm p-4 mt-2 cursor-pointer bg-gray-100 flex justify-center items-center flex-col"
           >
-            Add Question
+            <input {...getInputProps()} />
+            <p>Drag & drop an image here, or click to select one</p>
+            {image && (
+              <div className="relative">
+                <img
+                  src={URL.createObjectURL(image)}
+                  alt="Uploaded"
+                  className="h-32 w-auto"
+                />
+                <button type="button" onClick={removeImage}>
+                  <IconTrash stroke={2} />
+                </button>
+              </div>
+            )}
+          </div>
+          {errors && <p className="text-red-500">{errors}</p>}
+        </section>
+        <section className="col-span-4">
+          <button
+            type="submit"
+            className="bg-blue-500 text-white rounded-md p-2 w-full"
+          >
+            Submit
           </button>
         </section>
       </form>

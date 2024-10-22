@@ -206,7 +206,7 @@ function Templates() {
               {filteredCategories[category].map((template) => (
                 <div
                   key={template.id}
-                  className="card bg-white shadow-md p-4 rounded"
+                  className="card bg-white dark:bg-[#1f2937] shadow-md p-4 rounded"
                 >
                   <h3 className="font-semibold">{template.title}</h3>
                   <p className="font-rubik text-sm opacity-50">

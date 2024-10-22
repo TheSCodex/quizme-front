@@ -97,7 +97,7 @@ function Home() {
             .map((template) => (
               <div
                 key={template.id}
-                className="card bg-white shadow-md p-4 rounded"
+                className="card bg-white dark:bg-[#1f2937] shadow-md p-4 rounded"
               >
                 <h3 className="font-semibold">{template.title}</h3>
                 <p className="font-rubik text-sm opacity-50">
@@ -109,7 +109,7 @@ function Home() {
       )}
       <section className="filled-forms mt-8">
         <p className="font-rubik font-semibold">Filled forms</p>
-        <div className="mt-4 w-full p-6 bg-white rounded-md shadow-md">
+        <div className="mt-4 w-full p-6 bg-white dark:bg-[#1f2937] rounded-md shadow-md">
           <p className="text-xl font-rubik text-center">You have not filled any forms yet</p>
           <p className="font-rubik text-center opacity-50">Click on any of the available templates on the top or search for a specific template to fill out</p>
         </div>

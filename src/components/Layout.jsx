@@ -12,8 +12,8 @@ import {
   IconSearch,
   IconMoonStars,
   IconUser,
+  IconSun
 } from "@tabler/icons-react";
-import { IconSun } from "@tabler/icons-react";
 
 function Layout() {
   const [isSidebarExpanded, setSidebarExpanded] = useState(false);
@@ -30,9 +30,9 @@ function Layout() {
         const decodedToken = jwtDecode(token);
         setIsLoggedIn(true);
         setUserData(decodedToken);
-        if (decodedToken.preferredTheme) {
-          setDarkMode(decodedToken.preferredTheme === "dark");
-          if (decodedToken.preferredTheme === "dark") {
+        if (decodedToken.theme) {
+          setDarkMode(decodedToken.theme === "dark");
+          if (decodedToken.theme === "dark") {
             document.documentElement.classList.add("dark");
           } else {
             document.documentElement.classList.remove("dark");
@@ -45,10 +45,10 @@ function Layout() {
         console.error("Invalid token:", error);
       }
     } else {
-      const preferredTheme = sessionStorage.getItem("preferredTheme");
+      const preferredTheme = sessionStorage.getItem("theme");
       if (!preferredTheme) {
         const defaultTheme = "light";
-        sessionStorage.setItem("preferredTheme", defaultTheme);
+        sessionStorage.setItem("theme", defaultTheme);
         setDarkMode(defaultTheme === "dark");
         if (defaultTheme === "dark") {
           document.documentElement.classList.add("dark");
@@ -74,7 +74,6 @@ function Layout() {
     } else {
       document.documentElement.classList.remove("dark");
     }
-
     if (isLoggedIn && userData.email) {
       try {
         const response = await fetch(import.meta.env.VITE_API_THEME_UPDATE, {
@@ -84,19 +83,31 @@ function Layout() {
           },
           body: JSON.stringify({
             email: userData.email,
-            preferredTheme: newTheme,
+            theme: newTheme,
           }),
         });
         if (!response.ok) {
           throw new Error("Network response was not ok");
         }
+        const data = await response.json();
+        if (data.token) {
+          if (localStorage.getItem("authToken")) {
+            localStorage.setItem("authToken", data.token);
+          } else {
+            sessionStorage.setItem("authToken", data.token);
+          }
+          const decodedToken = jwtDecode(data.token);
+          setUserData(decodedToken);
+        }
       } catch (error) {
         console.error("Error updating theme:", error);
       }
     } else {
-      sessionStorage.setItem("preferredTheme", newTheme);
+      sessionStorage.setItem("theme", newTheme);
     }
   };
+  
+  
 
   const toggleSidebarWidth = () => {
     setSidebarExpanded(!isSidebarExpanded);

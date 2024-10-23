@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { IconPlus, IconFilter } from "@tabler/icons-react";
 
 function Templates() {
   const [templates, setTemplates] = useState([]);
@@ -90,7 +91,6 @@ function Templates() {
     return <div>Loading...</div>;
   }
 
-  // Group the filtered templates by category
   const groupedFilteredTemplates = () => {
     const grouped = {};
     const filtered = filterTemplates();
@@ -110,49 +110,11 @@ function Templates() {
     <div className="">
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold mb-4">Templates</h1>
-        <div className="relative flex">
-          <a href="/templates/new">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="icon icon-tabler icon-tabler-plus"
-              width="36"
-              height="36"
-              viewBox="0 0 24 24"
-              strokeWidth="1.5"
-              stroke="#9e9e9e"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-              <path d="M12 5l0 14" />
-              <path d="M5 12l14 0" />
-            </svg>
+        <div className="relative flex text-[#a1a1a1]">
+          <a className="mr-2" href="/templates/new">
+            <IconPlus stroke={2} />
           </a>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="icon icon-tabler icon-tabler-adjustments cursor-pointer"
-            width="36"
-            height="36"
-            viewBox="0 0 24 24"
-            strokeWidth="1.5"
-            stroke="#9e9e9e"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            onClick={toggleDropdown}
-          >
-            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-            <path d="M4 10a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
-            <path d="M6 4v4" />
-            <path d="M6 12v8" />
-            <path d="M10 16a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
-            <path d="M12 4v10" />
-            <path d="M12 18v2" />
-            <path d="M16 7a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
-            <path d="M18 4v1" />
-            <path d="M18 9v11" />
-          </svg>
+          <IconFilter stroke={2} />
           {dropdownVisible && (
             <div className="absolute right-0 mt-2 w-48 bg-white border rounded shadow-lg">
               <div className="px-4 py-2 font-bold">Categories</div>

@@ -4,7 +4,7 @@ import { Editor } from "react-draft-wysiwyg";
 import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
 import "draft-js/dist/Draft.css";
 import { useDropzone } from "react-dropzone";
-import { IconTrash } from "@tabler/icons-react";
+import { IconTrash, IconPlus } from "@tabler/icons-react";
 
 function TemplateForm() {
   const [editorState, setEditorState] = useState(EditorState.createEmpty());
@@ -17,6 +17,8 @@ function TemplateForm() {
   const [image, setImage] = useState(null);
   const [errors, setErrors] = useState([]);
   const [accessType, setAccessType] = useState("");
+  const [tags, setTags] = useState([]);
+  const [tagInput, setTagInput] = useState("");
 
   const handleEditorChange = (state) => {
     setEditorState(state);
@@ -25,6 +27,9 @@ function TemplateForm() {
   const handleQuestionTypeChange = (e, index) => {
     const updatedQuestions = [...questions];
     updatedQuestions[index].type = e.target.value;
+    if (e.target.value === "text") {
+      updatedQuestions[index].options = [];
+    }
     setQuestions(updatedQuestions);
   };
 
@@ -34,6 +39,8 @@ function TemplateForm() {
       type: "text",
       question: "",
       options: [],
+      min: undefined,
+      max: undefined,
     });
   };
 
@@ -67,6 +74,21 @@ function TemplateForm() {
     setQuestions(newQuestions);
   };
 
+  const handleTagInputChange = (e) => {
+    setTagInput(e.target.value);
+  };
+
+  const handleAddTag = () => {
+    if (tagInput && !tags.includes(tagInput)) {
+      setTags((prevTags) => [...prevTags, tagInput]);
+      setTagInput("");
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    setTags((prevTags) => prevTags.filter((tag) => tag !== tagToRemove));
+  };
+
   const onDrop = useCallback((acceptedFiles, fileRejections) => {
     if (fileRejections.length > 0) {
       setErrors("Only image files are allowed.");
@@ -95,7 +117,6 @@ function TemplateForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const formData = new FormData();
     formData.append("title", e.target.title.value);
     formData.append("category", e.target.category.value);
@@ -105,48 +126,69 @@ function TemplateForm() {
       JSON.stringify(editorState.getCurrentContent())
     );
     formData.append("questions", JSON.stringify(questions));
-
-    if (image) {
-      formData.append("image", image);
-    }
-
     try {
+      let imageUrl = null;
+      
+      if (image) {
+        const cloudinaryData = new FormData();
+        cloudinaryData.append("file", image);
+        cloudinaryData.append("upload_preset", import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+        const cloudinaryResponse = await fetch(
+          `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+          {
+            method: "POST",
+            body: cloudinaryData,
+          }
+        );
+  
+        if (!cloudinaryResponse.ok) {
+          const errorData = await cloudinaryResponse.json();
+          setErrors(errorData.message || "Image upload failed");
+          return;
+        }
+  
+        const cloudinaryResult = await cloudinaryResponse.json();
+        imageUrl = cloudinaryResult.secure_url;
+      }
+      if (imageUrl) {
+        formData.append("picture", imageUrl);
+      }
       const response = await fetch(import.meta.env.VITE_API_TEMPLATES_ADD, {
         method: "POST",
         body: formData,
       });
-
       if (!response.ok) {
         const errorData = await response.json();
         setErrors(errorData.message || "Something went wrong");
       } else {
-        // Handle successful submission (e.g., redirect or show a success message)
+        console.log("Template created successfully!");
       }
     } catch (error) {
       setErrors("An unexpected error occurred. Please try again later.");
     }
   };
+  
 
   return (
     <div>
-      <p className="font-rubik">New Template</p>
+      <p className="font-rubik text-lg md:text-xl">New Template</p>
       <form
-        className="w-full mt-6 bg-white rounded-md shadow-md p-8 grid grid-cols-4 gap-4"
+        className="w-full mt-6 bg-white dark:bg-[#1f2937] rounded-md shadow-md p-4 md:p-8 grid grid-cols-1 md:grid-cols-4 gap-4"
         onSubmit={handleSubmit}
       >
-        <section className="col-span-2">
+        <section className="md:col-span-2">
           <label className="font-rubik">Title</label>
           <input
             name="title"
             type="text"
-            className="mt-2 border border-black/15 rounded-sm p-2 w-full"
+            className="mt-2 border border-black/15 dark:bg-[#374151] rounded-sm p-2 w-full"
           />
         </section>
         <section>
           <label className="font-rubik">Category</label>
           <select
             name="category"
-            className="mt-2 border border-black/15 rounded-sm p-2 w-full"
+            className="mt-2 border border-black/15 dark:bg-[#374151] rounded-sm p-2 w-full"
           >
             <option>Open this select menu</option>
             <option value="education">Education</option>
@@ -160,44 +202,29 @@ function TemplateForm() {
           <label className="font-rubik">Access type</label>
           <select
             value={accessType}
-            onChange={(e) => setAccessType(e.target.value)} // Update access type state
-            className="mt-2 border border-black/15 rounded-sm p-2 w-full"
+            onChange={(e) => setAccessType(e.target.value)}
+            className="mt-2 border dark:bg-[#374151] border-black/15 rounded-sm p-2 w-full"
           >
             <option value="">Select Access Type</option>
             <option value="public">Public</option>
             <option value="private">Private</option>
           </select>
         </section>
-        <section className="col-span-4">
+        <section className="md:col-span-4">
           <label className="font-rubik">Description</label>
-          <div className="mt-2 border border-black/15 rounded-sm p-2">
+          <div className="mt-2 dark:bg-[#374151] border border-black/15 rounded-sm p-2">
             <Editor
               editorState={editorState}
               onEditorStateChange={handleEditorChange}
               wrapperClassName="demo-wrapper"
               editorClassName="demo-editor"
-              toolbarClassName="demo-toolbar"
+              toolbarClassName="bg-gray-200 border border-gray-300 text-gray-900 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300"
               placeholder="Write your description here..."
               toolbar={{
-                options: [
-                  "inline",
-                  "blockType",
-                  "fontSize",
-                  "list",
-                  "textAlign",
-                  "history",
-                ],
+                options: ["inline", "list", "textAlign", "history"],
                 inline: {
                   inDropdown: false,
                   options: ["bold", "italic", "underline"],
-                },
-                blockType: {
-                  inDropdown: true,
-                  options: ["Normal", "H1", "H2", "H3", "Blockquote", "Code"],
-                },
-                fontSize: {
-                  inDropdown: true,
-                  options: [8, 10, 12, 14, 16, 18, 24, 36],
                 },
                 list: {
                   inDropdown: false,
@@ -215,7 +242,7 @@ function TemplateForm() {
             />
           </div>
         </section>
-        <section className="col-span-4">
+        <section className="md:col-span-4">
           <label className="font-rubik">Questions</label>
           <div className="mt-2">
             {questions.map((question, index) => (
@@ -226,7 +253,7 @@ function TemplateForm() {
                     value={question.question}
                     onChange={(e) => handleQuestionTextChange(e, index)}
                     placeholder="Enter the question"
-                    className="mb-2 border border-black/15 rounded-sm p-2 w-full"
+                    className="mb-2 border dark:bg-[#374151] border-black/15 rounded-sm p-2 w-full"
                   />
                   <button
                     type="button"
@@ -239,12 +266,14 @@ function TemplateForm() {
                 <select
                   value={question.type}
                   onChange={(e) => handleQuestionTypeChange(e, index)}
-                  className="border border-black/15 rounded-sm p-2 w-full mb-2"
+                  className="border border-black/15 dark:bg-[#374151] rounded-sm p-2 w-full mb-2"
                 >
                   <option value="text">Text</option>
-                  <option value="multiple-choice">Multiple Choice</option>
+                  <option value="multiple_choice">Multiple Choice</option>
+                  <option value="checkbox">Checkbox</option>
+                  <option value="number">Number</option>
                 </select>
-                {question.type === "multiple-choice" && (
+                {question.type === "multiple_choice" && (
                   <div>
                     {question.options.map((option, optionIndex) => (
                       <div
@@ -258,7 +287,7 @@ function TemplateForm() {
                             handleOptionChange(e, index, optionIndex)
                           }
                           placeholder="Option"
-                          className="border border-black/15 rounded-sm p-2 w-full mb-2"
+                          className="border dark:bg-[#374151] border-black/15 rounded-sm p-2 w-full mb-2"
                         />
                         <button
                           type="button"
@@ -278,6 +307,70 @@ function TemplateForm() {
                     </button>
                   </div>
                 )}
+                {question.type === "checkbox" && (
+                  <div>
+                    {question.options.map((option, optionIndex) => (
+                      <div
+                        key={optionIndex}
+                        className="flex items-center relative"
+                      >
+                        <input
+                          type="text"
+                          value={option}
+                          onChange={(e) =>
+                            handleOptionChange(e, index, optionIndex)
+                          }
+                          placeholder="Option"
+                          className="border dark:bg-[#374151] border-black/15 rounded-sm p-2 w-full mb-2"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveOption(index, optionIndex)}
+                          className="absolute right-[10px] bottom-[15px]"
+                        >
+                          <IconTrash stroke={2} />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => handleAddOption(index)}
+                      className="text-blue-500"
+                    >
+                      Add Option
+                    </button>
+                  </div>
+                )}
+                {question.type === "number" && (
+                  <div>
+                    <input
+                      type="number"
+                      value={question.min || ""}
+                      onChange={(e) => {
+                        const updatedQuestions = [...questions];
+                        updatedQuestions[index].min = e.target.value
+                          ? parseInt(e.target.value, 10)
+                          : undefined;
+                        setQuestions(updatedQuestions);
+                      }}
+                      placeholder="Min Value"
+                      className="border dark:bg-[#374151] border-black/15 rounded-sm p-2 w-full mb-2"
+                    />
+                    <input
+                      type="number"
+                      value={question.max || ""}
+                      onChange={(e) => {
+                        const updatedQuestions = [...questions];
+                        updatedQuestions[index].max = e.target.value
+                          ? parseInt(e.target.value, 10)
+                          : undefined;
+                        setQuestions(updatedQuestions);
+                      }}
+                      placeholder="Max Value"
+                      className="border dark:bg-[#374151] border-black/15 rounded-sm p-2 w-full mb-2"
+                    />
+                  </div>
+                )}
               </div>
             ))}
             <button
@@ -289,13 +382,17 @@ function TemplateForm() {
             </button>
           </div>
         </section>
-        <section className="col-span-4">
+        <section className="md:col-span-4">
           <div
             {...getRootProps()}
-            className="border border-black/15 rounded-sm p-4 mt-2 cursor-pointer bg-gray-100 flex justify-center items-center flex-col"
+            className="border border-black/15 dark:bg-[#374151] rounded-sm p-4 mt-2 cursor-pointer bg-gray-100 flex justify-center items-center flex-col"
           >
             <input {...getInputProps()} />
-            <p>Drag & drop an image here, or click to select one</p>
+            {image ? (
+              ""
+            ) : (
+              <p>Drag & drop an image here, or click to select one</p>
+            )}
             {image && (
               <div className="relative">
                 <img
@@ -309,9 +406,52 @@ function TemplateForm() {
               </div>
             )}
           </div>
-          {errors && <p className="text-red-500">{errors}</p>}
         </section>
-        <section className="col-span-4">
+        <section className="md:col-span-4 col-span-1">
+          <div className="tag-input-section relative">
+            <input
+              type="text"
+              className="mb-2 border dark:bg-[#374151] border-black/15 rounded-sm p-2 w-full"
+              value={tagInput}
+              onChange={handleTagInputChange}
+              placeholder="Add a tag"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleAddTag();
+                  e.preventDefault();
+                }
+              }}
+            />
+            <button
+              className="absolute right-3 top-2"
+              type="button"
+              onClick={handleAddTag}
+            >
+              <IconPlus stroke={2} color="#a1a1a1" />
+            </button>
+          </div>
+
+          <div className="tags-display md:col-span-4 border border-black/15 dark:bg-[#374151] rounded-sm p-4 mt-2 cursor-pointer bg-gray-100 flex flex-wrap">
+            {tags.map((tag, index) => (
+              <span key={index} className="tag-card">
+                {tag}
+                <button type="button" onClick={() => handleRemoveTag(tag)}>
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        </section>
+        {errors ? (
+          <div className="errors mt-4 text-red-500 text-xs text-center">
+            {errors.map((error, index) => (
+              <p key={index}>{error}</p>
+            ))}
+          </div>
+        ) : (
+          ""
+        )}
+        <section className="md:col-span-4">
           <button
             type="submit"
             className="bg-blue-500 text-white rounded-md p-2 w-full"

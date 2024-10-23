@@ -1,9 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap');
-@media (max-width: 768px) {
-    #sidebar {
-      display: none;
-    }
-  }
+@import url("https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@media (max-width: 768px) {
+  #sidebar {
+    display: none;
+  }
+}
+.tag-card {
+  @apply inline-flex items-center bg-blue-200 text-blue-800 rounded-full px-2 py-1 mr-2;
+}
+
+.tag-card button {
+  @apply ml-2 text-blue-600 hover:text-blue-800;
+}

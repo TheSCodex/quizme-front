@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@cloudinary/react": "^1.13.0",
+    "@cloudinary/url-gen": "^1.21.0",
     "@tabler/icons-react": "^3.19.0",
     "dotenv": "^16.4.5",
     "draft-js": "^0.11.7",

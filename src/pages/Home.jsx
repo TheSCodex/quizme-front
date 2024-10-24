@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { IconMaximize, IconMaximizeOff } from "@tabler/icons-react";
+import { Link } from "react-router-dom";
 
 function Home() {
   const [templates, setTemplates] = useState([]);
@@ -39,7 +40,7 @@ function Home() {
       <section className="top-section flex justify-between">
         <p className="font-rubik font-semibold">Fill out a new Form</p>
         <div className="flex items-center">
-          <p className="relative opacity-50 z-0 mr-4">Template Gallery</p>
+          <p className="relative opacity-50 mr-4">Template Gallery</p>
           {showAll ? (
             <IconMaximizeOff
               className="cursor-pointer"
@@ -79,7 +80,9 @@ function Home() {
                   className="w-full h-32 object-cover rounded-t"
                 />
                 <div className="flex-1">
-                  <h3 className="font-semibold mt-2">{template.title}</h3>
+                  <Link to={`/template/show/${template.id}`}>
+                    <h3 className="font-semibold mt-2">{template.title}</h3>
+                  </Link>
                   <p className="font-rubik text-sm opacity-50">
                     By {template.user.name}
                   </p>

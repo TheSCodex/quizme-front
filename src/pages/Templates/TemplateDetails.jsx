@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
-import { IconEdit } from "@tabler/icons-react";
+import { IconEdit, IconTrash } from "@tabler/icons-react";
 import "draft-js/dist/Draft.css";
 import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
 import OptionPercentageChart from "../../utils/percentageChart.jsx";
+import { Link } from "react-router-dom";
 
 const TemplateDetails = () => {
   const { templateId } = useParams();
@@ -38,8 +39,8 @@ const TemplateDetails = () => {
           throw new Error(errorText);
         }
         const formsData = await formsResponse.json();
-        console.log("Fetched Forms Data:", formsData); // Log the fetched forms data
-        setAnswers(formsData); // Assuming this state is initialized to an array
+        console.log("Fetched Forms Data:", formsData);
+        setAnswers(formsData);
 
         const statisticsResponse = await fetch(
           `${import.meta.env.VITE_API_TEMPLATE_STATISTICS}/${templateId}`
@@ -50,7 +51,7 @@ const TemplateDetails = () => {
           throw new Error(errorText);
         }
         const statsData = await statisticsResponse.json();
-        console.log("Fetched Statistics Data:", statsData); // Log statistics data
+        console.log("Fetched Statistics Data:", statsData);
         setStatistics(statsData);
       } catch (error) {
         setError(error.message);
@@ -94,7 +95,7 @@ const TemplateDetails = () => {
           throw new Error("Failed to fetch forms");
         }
         const forms = await response.json();
-        console.log("Fetched Forms:", forms); // Debugging statement
+        console.log("Fetched Forms:", forms);
         if (!Array.isArray(forms)) {
           throw new Error("Expected an array of forms");
         }
@@ -120,10 +121,6 @@ const TemplateDetails = () => {
 
     loadTemplateAndAnswers();
   }, [templateId]);
-
-  const handleEdit = () => {
-    navigate(`/templates/edit/${templateId}`);
-  };
 
   const handleAnswerChange = (questionId, response) => {
     setNewAnswers((prev) => ({
@@ -176,6 +173,10 @@ const TemplateDetails = () => {
     }
   };
 
+  const handleEdit = (templateId) => {
+    navigate(`/template/edit/${templateId}`, { replace: true });
+  };
+
   if (loading) return <div>Loading...</div>;
 
   if (!template) return <div>Template not found.</div>;
@@ -185,11 +186,20 @@ const TemplateDetails = () => {
       <div className="bg-white dark:bg-[#1f2937] p-6 rounded-md drop-shadow">
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-bold">{template.title}</h1>
-          {isOwnerOrAdmin && (
-            <button onClick={handleEdit} className="btn btn-primary">
-              <IconEdit color="#a1a1a1" stroke={2} />
-            </button>
-          )}
+          {/* {isOwnerOrAdmin && (
+            <div>
+              <button className="btn btn-primary">
+                <IconEdit
+                  color="#a1a1a1"
+                  stroke={2}
+                  onClick={() => handleEdit(templateId)}
+                />
+              </button>
+              <button className="btn btn-primary">
+                <IconTrash color="#a1a1a1" stroke={2} />
+              </button>
+            </div>
+          )} */}
         </div>
         <img
           src={template.picture}
@@ -275,58 +285,57 @@ const TemplateDetails = () => {
           </button>
         </form>
       </div>
-      <div className="answer-statistics mt-6 grid md:grid-cols-2 gap-6 bg-white dark:bg-[#1f2937] p-6 rounded-md drop-shadow">
-        <div className="answers w-full col-span-1">
-          <h2 className="font-bold mb-2">Submitted Answers</h2>
-          {answers.map((answer) => (
-            <div
-              key={answer.id}
-              className="answer-miniature bg-gray-200 dark:bg-[#374151] p-2 rounded mb-2"
-            >
-              <div className="font-semibold">{answer.userId}</div>
-              <div className="text-sm">
-                {new Date(answer.createdAt).toLocaleDateString()}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="statistics w-full col-span-1">
-          <h2 className="font-bold mb-2">Statistics</h2>
-          {statistics ? (
-            <div className="bg-gray-200 dark:bg-[#374151] p-6 rounded-md">
-              <p className="text-lg font-semibold mb-2">
-                Total Forms:
-                <span className="ml-1">{statistics.totalForms}</span>
-              </p>
-              <p className="text-lg font-semibold mb-2">
-                Total Answers:
-                <span className="ml-1">{statistics.totalAnswers}</span>
-              </p>
-              <p className="text-lg font-semibold mb-2">
-                Most Repeated Answer:
-                <span className="ml-1">{statistics.mostRepeatedAnswer}</span>
-              </p>
-              <p className="text-lg font-semibold mb-4">
-                Most Chosen Option:
-                <span className="ml-1">{statistics.mostChosenAnswer}</span>
-              </p>
-              {statistics.optionPercentages &&
-              typeof statistics.optionPercentages === "object" &&
-              Object.keys(statistics.optionPercentages).length > 0 ? (
-                <div className="mt-6">
-                  <OptionPercentageChart
-                    optionPercentages={statistics.optionPercentages} // Make sure this is correct
-                  />
+      {isOwnerOrAdmin && (
+        <div className="answer-statistics mt-6 grid md:grid-cols-2 gap-6 bg-white dark:bg-[#1f2937] p-6 rounded-md drop-shadow">
+          <div className="answers w-full col-span-1">
+            <h2 className="font-bold mb-2">Submitted Forms</h2>
+            {answers.map((answer) => (
+              <Link
+                key={answer.id}
+                to={`/form/${templateId}/${answer.id}`}
+                className="answer-miniature bg-gray-200 dark:bg-[#374151] p-2 rounded mb-2 block"
+              >
+                <div className="font-semibold">{answer.user}</div>
+                <div className="text-sm">
+                  {new Date(answer.createdAt).toLocaleDateString()}
                 </div>
-              ) : (
-                <p>No data available for the chart.</p> // Display a fallback message
-              )}
-            </div>
-          ) : (
-            <p>No statistics available.</p>
-          )}
+              </Link>
+            ))}
+          </div>
+          <div className="statistics w-full col-span-1">
+            <h2 className="font-bold mb-2">Statistics</h2>
+            {statistics ? (
+              <div className="bg-gray-200 dark:bg-[#374151] p-6 rounded-md">
+                <p className="text-lg font-semibold mb-2">
+                  Total Forms:
+                  <span className="ml-1">{statistics.totalForms}</span>
+                </p>
+                <p className="text-lg font-semibold mb-2">
+                  Most Repeated Answer:
+                  <span className="ml-1">{statistics.mostRepeatedAnswer}</span>
+                </p>
+                <p className="text-lg font-semibold mb-4">
+                  Most Chosen Option:
+                  <span className="ml-1">{statistics.mostChosenAnswer}</span>
+                </p>
+                {statistics.optionPercentages &&
+                typeof statistics.optionPercentages === "object" &&
+                Object.keys(statistics.optionPercentages).length > 0 ? (
+                  <div className="mt-6">
+                    <OptionPercentageChart
+                      optionPercentages={statistics.optionPercentages}
+                    />
+                  </div>
+                ) : (
+                  <p>No data available for the chart.</p>
+                )}
+              </div>
+            ) : (
+              <p>No statistics available.</p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
 };

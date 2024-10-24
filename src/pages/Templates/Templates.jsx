@@ -19,6 +19,7 @@ function Templates() {
           throw new Error("Failed to fetch templates");
         }
         const data = await response.json();
+        console.log(data);
         setTemplates(data);
         groupTemplatesByCategory(data);
         extractTags(data);

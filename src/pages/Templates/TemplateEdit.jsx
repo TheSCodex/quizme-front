@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import { EditorState } from "draft-js";
 import { Editor } from "react-draft-wysiwyg";
 import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
@@ -8,6 +9,7 @@ import { IconTrash, IconPlus } from "@tabler/icons-react";
 import { jwtDecode } from "jwt-decode";
 
 function TemplateEdit() {
+  const { templateId } = useParams();
   const [editorState, setEditorState] = useState(EditorState.createEmpty());
   const [questions, setQuestions] = useState([]);
   const [title, setTitle] = useState("");
@@ -31,6 +33,36 @@ function TemplateEdit() {
   }
 
   const userId = userData.id;
+
+  useEffect(() => {
+    const fetchTemplate = async () => {
+      console.log(templateId);
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_TEMPLATES_FETCH_ONE}/${templateId}`
+        );
+        if (!response.ok) {
+          const errorData = await response.json();
+          setErrors([errorData.message || "Failed to fetch template"]);
+          return;
+        }
+        const templateData = await response.json();
+        setTitle(templateData.title);
+        setCategory(templateData.category);
+        setAccessType(templateData.accessType);
+        setTags(templateData.tags);
+        setQuestions(templateData.questions);
+        setEditorState(EditorState.createWithContent(templateData.description));
+        if (templateData.imageUrl) {
+          setImage({ preview: templateData.imageUrl });
+        }
+      } catch (error) {
+        setErrors(["An unexpected error occurred while fetching template."]);
+      }
+    };
+
+    fetchTemplate();
+  }, [templateId]);
 
   const handleEditorChange = (state) => {
     setEditorState(state);
@@ -136,7 +168,7 @@ function TemplateEdit() {
     setImage(null);
   };
 
-  const handleSubmit = async (e) => {
+  const handleUpdate = async (e) => {
     e.preventDefault();
     const payload = {
       title: e.target.title.value,
@@ -173,18 +205,21 @@ function TemplateEdit() {
         const cloudinaryResult = await cloudinaryResponse.json();
         payload.imageUrl = cloudinaryResult.secure_url;
       }
-      const response = await fetch(import.meta.env.VITE_API_TEMPLATES_ADD, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_TEMPLATES_UPDATE}/${templateId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
       if (!response.ok) {
         const errorData = await response.json();
         setErrors([errorData.message || "Something went wrong"]);
       } else {
-        console.log("Template created successfully!");
+        console.log("Template updated successfully!");
       }
     } catch (error) {
       setErrors(["An unexpected error occurred. Please try again later."]);
@@ -196,7 +231,7 @@ function TemplateEdit() {
       <p className="font-rubik text-lg md:text-xl">New Template</p>
       <form
         className="w-full mt-6 bg-white dark:bg-[#1f2937] rounded-md shadow-md p-4 md:p-8 grid grid-cols-1 md:grid-cols-4 gap-4"
-        onSubmit={handleSubmit}
+        onSubmit={handleUpdate}
       >
         <section className="md:col-span-2">
           <label className="font-rubik">Title</label>
@@ -460,9 +495,11 @@ function TemplateEdit() {
 
           <div className="tags-display md:col-span-4 border border-black/15 dark:bg-[#374151] rounded-sm p-4 mt-2 cursor-pointer bg-gray-100 flex flex-wrap">
             {tags.map((tag, index) => (
-              <span key={index} className="tag-card">
-                {tag}
-                <button type="button" onClick={() => handleRemoveTag(tag)}>
+              <span key={tag.id} className="tag-card">
+                {" "}
+                {/* Use tag.id as key */}
+                {tag.name} {/* Render the specific property */}
+                <button type="button" onClick={() => handleRemoveTag(tag.id)}>
                   ×
                 </button>
               </span>
@@ -472,12 +509,13 @@ function TemplateEdit() {
         {errors ? (
           <div className="errors mt-4 text-red-500 text-xs text-center">
             {errors.map((error, index) => (
-              <p key={index}>{error}</p>
+              <p key={index}>{error}</p> // Ensure 'error' is a string
             ))}
           </div>
         ) : (
           ""
         )}
+
         <section className="md:col-span-4">
           <button
             type="submit"

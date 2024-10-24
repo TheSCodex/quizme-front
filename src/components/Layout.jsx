@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
+import { createPortal } from "react-dom";
 import logo from "../assets/logo.png";
 import logot from "../assets/logot.png";
 import { jwtDecode } from "jwt-decode";
+import PropTypes from "prop-types";
 import {
   IconHome2,
   IconTemplate,
@@ -14,6 +16,25 @@ import {
   IconUser,
   IconSun,
 } from "@tabler/icons-react";
+
+function DropdownPortal({ isEditing, logOut, toggleUserSettings }) {
+  if (!isEditing) return null;
+
+  return createPortal(
+    <div className="font-rubik mt-12 w-48 text-black dark:text-white bg-white dark:bg-[#1f2937] rounded-md absolute z-50 top-5 right-5 shadow-md p-2">
+      <button onClick={logOut}>
+        <p className="p-2 opacity-50">Logout</p>
+      </button>
+    </div>,
+    document.body
+  );
+}
+
+DropdownPortal.propTypes = {
+  isEditing: PropTypes.bool.isRequired,
+  logOut: PropTypes.func.isRequired,
+  toggleUserSettings: PropTypes.func.isRequired,
+};
 
 function Layout() {
   const [isSidebarExpanded, setSidebarExpanded] = useState(false);
@@ -202,22 +223,23 @@ function Layout() {
                 Resources
               </li>
               <li className="flex items-center py-1 rounded-md hover:cursor-pointer text-[#9e9e9e] hover:text-blue-500 hover:bg-[#3073F1] hover:bg-opacity-15 group">
-                <a className="block mr-3">
+                <a className="block mr-3" href="/admin/users">
                   <IconSettings width={32} stroke={2} />
                 </a>
                 <a
+                  href="/admin/users"
                   className={`${
                     isSidebarExpanded ? "block" : "hidden"
                   } text-lg`}
                 >
-                  Settings
+                  Users
                 </a>
               </li>
             </>
           )}
         </ul>
       </div>
-      <div className="flex-1 z-10 flex flex-col">
+      <div className="flex-1 flex flex-col">
         <header className="bg-white drop-shadow-sm p-4 flex items-center justify-between text-black dark:bg-[#1e293b] dark:text-white">
           <div className="flex items-center hover:cursor-pointer">
             <button className="hidden lg:block" onClick={toggleSidebarWidth}>
@@ -249,26 +271,24 @@ function Layout() {
               />
             )}
             {isLoggedIn ? (
-              <IconUser
-                className="cursor-pointer"
-                onClick={toggleUserSettings}
-                width={34}
-                color="#a1a1a1"
-                stroke={2}
-              />
+              <>
+                <IconUser
+                  className="cursor-pointer"
+                  onClick={toggleUserSettings}
+                  width={34}
+                  color="#a1a1a1"
+                  stroke={2}
+                />
+                <DropdownPortal
+                  isEditing={isEditing}
+                  logOut={logOut}
+                  toggleUserSettings={toggleUserSettings}
+                />
+              </>
             ) : (
               <a href="/login">
                 <IconUser width={34} color="#a1a1a1" stroke={2} />
               </a>
-            )}
-            {isEditing && (
-              <div className="z-[1000] font-rubik absolute right-5 mt-12 w-48 bg-white dark:bg-[#1f2937] rounded shadow-lg">
-                <p className="px-2 py-4">Edit user Info</p>
-                <div className="w-full border border-[#a1a1a1] mx-auto"></div>
-                <button onClick={logOut}>
-                  <p className="p-2 opacity-50">Logout</p>
-                </button>
-              </div>
             )}
           </div>
         </header>

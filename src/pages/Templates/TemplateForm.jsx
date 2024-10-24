@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { EditorState } from "draft-js";
 import { Editor } from "react-draft-wysiwyg";
 import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
@@ -22,6 +23,7 @@ function TemplateForm() {
   const [accessType, setAccessType] = useState("");
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState("");
+  let navigate = useNavigate();
 
   const token =
     localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
@@ -184,7 +186,9 @@ function TemplateForm() {
         const errorData = await response.json();
         setErrors([errorData.message || "Something went wrong"]);
       } else {
+        const data = await response.json();
         console.log("Template created successfully!");
+        navigate(`/template/show/${data.id}`);
       }
     } catch (error) {
       setErrors(["An unexpected error occurred. Please try again later."]);

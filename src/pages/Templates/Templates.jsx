@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { IconPlus, IconFilter } from "@tabler/icons-react";
+import { Link } from "react-router-dom";
 
 function Templates() {
   const [templates, setTemplates] = useState([]);
@@ -168,12 +169,31 @@ function Templates() {
               {filteredCategories[category].map((template) => (
                 <div
                   key={template.id}
-                  className="card bg-white dark:bg-[#1f2937] shadow-md p-4 rounded"
+                  className="card bg-white dark:bg-[#1f2937] shadow-md p-4 rounded flex flex-col"
                 >
-                  <h3 className="font-semibold">{template.title}</h3>
-                  <p className="font-rubik text-sm opacity-50">
-                    By {template.user.name}
-                  </p>
+                  <img
+                    src={template.picture}
+                    alt={template.title}
+                    className="w-full h-32 object-cover rounded-t"
+                  />
+                  <div className="flex-1">
+                    <Link to={`/template/show/${template.id}`}>
+                      <h3 className="font-semibold mt-2">{template.title}</h3>
+                    </Link>
+                    <p className="font-rubik text-sm opacity-50">
+                      By {template.user.name}
+                    </p>
+                  </div>
+                  <div className="mt-2 flex flex-wrap">
+                    {template.tags.map((tag) => (
+                      <span
+                        key={tag.id}
+                        className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full mr-1"
+                      >
+                        {tag.name}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>

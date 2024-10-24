@@ -7,7 +7,7 @@ import { useDropzone } from "react-dropzone";
 import { IconTrash, IconPlus } from "@tabler/icons-react";
 import { jwtDecode } from "jwt-decode";
 
-function TemplateForm() {
+function TemplateEdit() {
   const [editorState, setEditorState] = useState(EditorState.createEmpty());
   const [questions, setQuestions] = useState([]);
   const [title, setTitle] = useState("");
@@ -491,4 +491,4 @@ function TemplateForm() {
   );
 }
 
-export default TemplateForm;
+export default TemplateEdit;

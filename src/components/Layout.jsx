@@ -12,7 +12,7 @@ import {
   IconSearch,
   IconMoonStars,
   IconUser,
-  IconSun
+  IconSun,
 } from "@tabler/icons-react";
 
 function Layout() {
@@ -21,6 +21,7 @@ function Layout() {
   const [userData, setUserData] = useState({});
   const [isDarkMode, setDarkMode] = useState(false);
   const [language, setLanguage] = useState("en");
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     const token =
@@ -106,8 +107,16 @@ function Layout() {
       sessionStorage.setItem("theme", newTheme);
     }
   };
-  
-  
+
+  const logOut = () => {
+    localStorage.removeItem("authToken") ||
+      sessionStorage.removeItem("authToken");
+    location.reload();
+  };
+
+  const toggleUserSettings = () => {
+    setIsEditing(!isEditing);
+  };
 
   const toggleSidebarWidth = () => {
     setSidebarExpanded(!isSidebarExpanded);
@@ -240,11 +249,26 @@ function Layout() {
               />
             )}
             {isLoggedIn ? (
-              <IconUser width={34} color="#a1a1a1" stroke={2} />
+              <IconUser
+                className="cursor-pointer"
+                onClick={toggleUserSettings}
+                width={34}
+                color="#a1a1a1"
+                stroke={2}
+              />
             ) : (
               <a href="/login">
                 <IconUser width={34} color="#a1a1a1" stroke={2} />
               </a>
+            )}
+            {isEditing && (
+              <div className="z-[1000] font-rubik absolute right-5 mt-12 w-48 bg-white dark:bg-[#1f2937] rounded shadow-lg">
+                <p className="px-2 py-4">Edit user Info</p>
+                <div className="w-full border border-[#a1a1a1] mx-auto"></div>
+                <button onClick={logOut}>
+                  <p className="p-2 opacity-50">Logout</p>
+                </button>
+              </div>
             )}
           </div>
         </header>

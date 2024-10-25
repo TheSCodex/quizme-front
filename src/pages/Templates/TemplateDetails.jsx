@@ -162,7 +162,6 @@ const TemplateDetails = () => {
       response: newAnswers[questionId],
     }));
     try {
-      console.log(import.meta.env.VITE_API_FORM_CREATE);
       const response = await fetch(import.meta.env.VITE_API_FORM_CREATE, {
         method: "POST",
         headers: {
@@ -182,7 +181,7 @@ const TemplateDetails = () => {
   };
 
   const handleDelete = async (e) => {
-    e.preventDefault();
+    e.preventDefault()    
     const result = await Swal.fire({
       title: "Are you sure?",
       text: "This action cannot be undone.",
@@ -190,11 +189,14 @@ const TemplateDetails = () => {
       showCancelButton: true,
       confirmButtonText: "Yes, delete it!",
       cancelButtonText: "No, cancel!",
-    });
+    });  
     if (result.isConfirmed) {
-      try {
+      try {        
+        if (!templateId || !userId) {
+          throw new Error("Missing template ID or user ID");
+        }
         const response = await fetch(
-          `${import.meta.env.VITE_API_TEMPLATES_DELETE}/${templateId}`,
+          `${import.meta.env.VITE_API_TEMPLATES_DELETE}/${template.id}`,
           {
             method: "DELETE",
             headers: {
@@ -202,11 +204,13 @@ const TemplateDetails = () => {
             },
             body: JSON.stringify({ userId }),
           }
-        );
+        );  
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.message);
-        }  
+          console.error("Error response data:", errorData);
+          throw new Error(errorData.message || "Unknown error occurred during deletion.");
+        }
+        console.log("Template deleted successfully.");
         await Swal.fire({
           title: "Deleted!",
           text: "Your template has been deleted.",
@@ -215,7 +219,7 @@ const TemplateDetails = () => {
         });
         navigate(-1);
       } catch (error) {
-        console.error("Error deleting form:", error.message);
+        console.error("Error deleting template:", error.message);
         await Swal.fire({
           title: "Error!",
           text: "There was a problem deleting your template.",
@@ -223,8 +227,11 @@ const TemplateDetails = () => {
           confirmButtonText: "OK",
         });
       }
+    } else {
+      console.log("User canceled deletion.");
     }
   };
+  
 
   const handleEdit = (templateId) => {
     navigate(`/template/edit/${templateId}`, { replace: true });

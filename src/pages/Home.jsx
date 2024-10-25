@@ -49,6 +49,7 @@ function Home() {
             );
           });
           setTemplates(filteredTemplates);
+          console.log(filteredTemplates);
         } else {
           setErrors([
             data.message ||

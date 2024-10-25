@@ -10,6 +10,7 @@ const Form = () => {
   const { templateId, formId } = useParams();
   const [template, setTemplate] = useState(null);
   const [answers, setAnswers] = useState([]);
+  const [formData, setFormData] = useState([]);
   const [newAnswers, setNewAnswers] = useState({});
   const [isOwnerOrAdmin, setIsOwnerOrAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -69,6 +70,7 @@ const Form = () => {
           setNewAnswers(formattedAnswers);
         }
         setAnswers(formData.answers || []);
+        setFormData(formData);
       } catch (error) {
         console.error(error);
         setErrors([
@@ -117,8 +119,7 @@ const Form = () => {
   };
 
   const handleDelete = async (e) => {
-    e.preventDefault();
-    const formId = template.id;  
+    e.preventDefault();  
     const result = await Swal.fire({
       title: "Are you sure?",
       text: "This action cannot be undone.",
@@ -126,22 +127,24 @@ const Form = () => {
       showCancelButton: true,
       confirmButtonText: "Yes, delete it!",
       cancelButtonText: "No, cancel!",
-    });
+    });  
     if (result.isConfirmed) {
       try {
+        console.log("User confirmed deletion. Sending DELETE request...");
         const response = await fetch(
-          `${import.meta.env.VITE_API_FORM_DELETE}/${formId}`,
+          `${import.meta.env.VITE_API_FORM_DELETE}/${formData.id}`,
           {
             method: "DELETE",
             headers: {
               "Content-Type": "application/json",
             },
           }
-        );
+        );  
         if (!response.ok) {
           const errorData = await response.json();
+          console.error("Error response data:", errorData);
           throw new Error(errorData.message);
-        }  
+        }
         await Swal.fire({
           title: "Deleted!",
           text: "Your form has been deleted.",
@@ -150,7 +153,6 @@ const Form = () => {
         });
         navigate(-1);
       } catch (error) {
-        console.error("Error deleting form:", error.message);
         await Swal.fire({
           title: "Error!",
           text: "There was a problem deleting your form.",
@@ -158,6 +160,8 @@ const Form = () => {
           confirmButtonText: "OK",
         });
       }
+    } else {
+      console.log("User canceled deletion.");
     }
   };
 

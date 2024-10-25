@@ -1,11 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { IconMaximize, IconMaximizeOff } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
 
 function Home() {
   const [templates, setTemplates] = useState([]);
   const [showAll, setShowAll] = useState(false);
   const [errors, setErrors] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [forms, setForms] = useState([]);
+
+  const token =
+    localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+  let userData = null;
+  if (token) {
+    userData = jwtDecode(token);
+  }
+
+  const userId = userData?.id;
 
   useEffect(() => {
     const fetchTemplates = async () => {
@@ -30,6 +42,38 @@ function Home() {
 
     fetchTemplates();
   }, []);
+
+  const fetchFormsAndAnswers = async (userId) => {
+    if (!userId) return;
+    setLoading(true);
+    try {
+      const response = await fetch(import.meta.env.VITE_API_FORMS_FETCH_USER, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch forms");
+      }
+      const forms = await response.json();
+      console.log("Fetched Forms:", forms);
+
+      if (!Array.isArray(forms)) {
+        throw new Error("Expected an array of forms");
+      }
+      setForms(forms);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFormsAndAnswers(userId);
+  }, [userId]);
 
   const toggleShowAll = () => {
     setShowAll(!showAll);
@@ -71,7 +115,7 @@ function Home() {
             .slice(0, showAll ? templates.length : 4)
             .map((template) => (
               <div
-                key={template.id}
+                key={template.id} // Ensure this id is unique
                 className="card bg-white dark:bg-[#1f2937] shadow-md p-4 rounded flex flex-col"
               >
                 <img
@@ -88,14 +132,19 @@ function Home() {
                   </p>
                 </div>
                 <div className="mt-2 flex flex-wrap">
-                  {template.tags.map((tag) => (
-                    <span
-                      key={tag.id}
-                      className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full mr-1"
-                    >
-                      {tag.name}
-                    </span>
-                  ))}
+                  {template.tags.map(
+                    (
+                      tag,
+                      index // Using index as a fallback, but better if tags have unique ids
+                    ) => (
+                      <span
+                        key={tag.id || `tag-${index}`} // Fallback to index if id is not available
+                        className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full mr-1"
+                      >
+                        {tag.name}
+                      </span>
+                    )
+                  )}
                 </div>
               </div>
             ))}
@@ -103,15 +152,33 @@ function Home() {
       )}
       <section className="filled-forms mt-8">
         <p className="font-rubik font-semibold">Filled forms</p>
-        <div className="mt-4 w-full p-6 bg-white dark:bg-[#1f2937] rounded-md shadow-md">
-          <p className="text-xl font-rubik text-center">
-            You have not filled any forms yet
-          </p>
-          <p className="font-rubik text-center opacity-50">
-            Click on any of the available templates on the top or search for a
-            specific template to fill out
-          </p>
-        </div>
+        {forms.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+            {forms.map((form, index) => (
+              <div
+                key={form.id || `form-${index}`}
+                className="bg-white dark:bg-[#1f2937] rounded-md shadow-md p-4"
+              >
+                <h3 className="font-rubik text-lg font-semibold">
+                  {form.template ? form.template.title : "No Title Available"}
+                </h3>
+                <p className="font-rubik text-sm opacity-70">
+                  Template by: {form.user}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-4 w-full p-6 bg-white dark:bg-[#1f2937] rounded-md shadow-md">
+            <p className="text-xl font-rubik text-center">
+              You have not filled any forms yet
+            </p>
+            <p className="font-rubik text-center opacity-50">
+              Click on any of the available templates on the top or search for a
+              specific template to fill out
+            </p>
+          </div>
+        )}
       </section>
     </div>
   );

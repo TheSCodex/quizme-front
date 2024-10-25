@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Outlet } from "react-router-dom";
 import { createPortal } from "react-dom";
 import logo from "../assets/logo.png";
 import logot from "../assets/logot.png";
+import Fuse from "fuse.js";
 import { jwtDecode } from "jwt-decode";
 import PropTypes from "prop-types";
 import {
@@ -36,6 +38,68 @@ DropdownPortal.propTypes = {
   toggleUserSettings: PropTypes.func.isRequired,
 };
 
+function SearchPortal({
+  isSearchOpen,
+  closeSearch,
+  toggleSearch,
+  searchQuery,
+  handleSearch,
+  searchResults,
+}) {
+  if (!isSearchOpen) return null;
+
+  const handleResultClick = () => {
+    closeSearch(); // Close the search portal
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 bg-gray-800 dark:text-white dark:bg-gray-700 dark:bg-opacity-75 bg-opacity-75 flex items-center justify-center z-50">
+      <div className="relative bg-white pt-10 dark:bg-[#1f2937] rounded-lg p-4 shadow-lg w-3/4 lg:w-1/2">
+        <button
+          onClick={toggleSearch}
+          className="absolute top-2 right-3 text-gray-500"
+        >
+          Close
+        </button>
+        <input
+          type="text"
+          placeholder="Search..."
+          value={searchQuery}
+          onChange={handleSearch}
+          autoFocus
+          className="w-full border-black/15 dark:bg-[#374151] bg-slate-200 rounded-sm p-2 focus:outline-none"
+        />
+        <ul className="mt-4">
+          {searchResults.length > 0 ? (
+            searchResults.map((result, index) => (
+              <Link key={index} to={`/template/show/${result.id}`} onClick={handleResultClick}>
+                <div className="mb-2 hover:bg-gray-100/60">
+                  <li className="rounded-md">{result.title}</li>
+                  <li className="rounded-md text-sm opacity-60">
+                    By {result.user.name}
+                  </li>
+                </div>
+              </Link>
+            ))
+          ) : (
+            <p className="text-gray-500 mt-4">No results found</p>
+          )}
+        </ul>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+SearchPortal.propTypes = {
+  isSearchOpen: PropTypes.bool.isRequired,
+  closeSearch: PropTypes.func.isRequired,
+  toggleSearch: PropTypes.func.isRequired,
+  searchQuery: PropTypes.string.isRequired,
+  handleSearch: PropTypes.func.isRequired,
+  searchResults: PropTypes.array.isRequired,
+};
+
 function Layout() {
   const [isSidebarExpanded, setSidebarExpanded] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -43,6 +107,67 @@ function Layout() {
   const [isDarkMode, setDarkMode] = useState(false);
   const [language, setLanguage] = useState("en");
   const [isEditing, setIsEditing] = useState(false);
+  const [isSearchOpen, setSearchOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [templates, setTemplates] = useState([]);
+  const [errors, setErrors] = useState([]);
+
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
+        const response = await fetch(import.meta.env.VITE_API_TEMPLATES_FETCH);
+        const data = await response.json();
+        console.log(data);
+
+        if (response.ok) {
+          setTemplates(data);
+        } else {
+          setErrors([
+            data.message ||
+              "An unexpected error occurred. Please try again later.",
+          ]);
+        }
+      } catch (error) {
+        console.error("Error fetching templates:", error);
+        setErrors(["An unexpected error occurred. Please try again later."]);
+      }
+    };
+
+    fetchTemplates();
+  }, []);
+
+  const toggleSearch = () => setSearchOpen(!isSearchOpen);
+
+  const handleSearch = (event) => {
+    const query = event.target.value;
+    setSearchQuery(query);
+
+    const fuse = new Fuse(templates, { keys: ["title"] });
+    const results = fuse.search(query).map((result) => result.item);
+    setSearchResults(results);
+  };
+
+  const closeSearch = () => setSearchOpen(false);
+
+  useEffect(() => {
+    const token =
+      localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+    if (token) {
+      try {
+        const decodedToken = jwtDecode(token);
+        const currentTime = Math.floor(Date.now() / 1000);
+        if (decodedToken.exp < currentTime) {
+          logOut();
+        } else {
+          setIsLoggedIn(true);
+          setUserData(decodedToken);
+        }
+      } catch (error) {
+        console.error("Invalid token:", error);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const token =
@@ -252,7 +377,20 @@ function Layout() {
             </p>
           </div>
           <div className="grid grid-cols-3 gap-4">
-            <IconSearch width={34} color="#a1a1a1" stroke={2} />
+            <button onClick={toggleSearch}>
+              <IconSearch width={34} color="#a1a1a1" stroke={2} />
+            </button>
+            {isSearchOpen && (
+              <SearchPortal
+                isSearchOpen={isSearchOpen}
+                closeSearch={closeSearch}
+                toggleSearch={toggleSearch}
+                searchQuery={searchQuery}
+                handleSearch={handleSearch}
+                searchResults={searchResults}
+                templates={templates}
+              />
+            )}
             {isDarkMode ? (
               <IconSun
                 width={34}
@@ -292,7 +430,7 @@ function Layout() {
             )}
           </div>
         </header>
-        <div className="lg:hidden bg-white border-t drop-shadow-sm p-4 flex justify-around">
+        <div className="lg:hidden bg-white border-t drop-shadow-sm p-4 flex text-black dark:bg-[#1e293b] dark:text-white justify-around">
           <a href="/">
             <IconHome2 width={34} color="#a1a1a1" stroke={2} />
           </a>

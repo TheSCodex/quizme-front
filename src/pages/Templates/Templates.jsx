@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { IconPlus, IconFilter } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
 
 function Templates() {
   const [templates, setTemplates] = useState([]);
@@ -10,28 +11,57 @@ function Templates() {
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
+  const [errors, setErrors] = useState([]);
+
+  const token =
+    localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+  let userData = null;
+  if (token) {
+    userData = jwtDecode(token);
+  }
+
+  const userId = userData?.id;
 
   useEffect(() => {
     const fetchTemplates = async () => {
+      setLoading(true); // Start loading
       try {
         const response = await fetch(import.meta.env.VITE_API_TEMPLATES_FETCH);
-        if (!response.ok) {
-          throw new Error("Failed to fetch templates");
-        }
         const data = await response.json();
-        console.log(data);
-        setTemplates(data);
-        groupTemplatesByCategory(data);
-        extractTags(data);
+
+        if (response.ok) {
+          const filteredTemplates = data.filter((template) => {
+            if (userData?.role === "admin") {
+              return true; // Admins see all templates
+            }
+            if (template.createdBy === userId) {
+              return true; // Owners see their own templates
+            }
+            return (
+              template.accessType === "public" ||
+              (template.accessType === "private" &&
+                template.authorizedUsers.some((user) => user.id === userId))
+            );
+          });
+          setTemplates(filteredTemplates);
+          groupTemplatesByCategory(filteredTemplates);
+          extractTags(data);
+        } else {
+          setErrors([
+            data.message ||
+              "An unexpected error occurred. Please try again later.",
+          ]);
+        }
       } catch (error) {
-        console.error(error);
+        console.error("Error fetching templates:", error);
+        setErrors(["An unexpected error occurred. Please try again later."]);
       } finally {
-        setLoading(false);
+        setLoading(false); // Stop loading
       }
     };
 
     fetchTemplates();
-  }, []);
+  }, [userId, userData?.role]);
 
   const groupTemplatesByCategory = (templates) => {
     const grouped = {};

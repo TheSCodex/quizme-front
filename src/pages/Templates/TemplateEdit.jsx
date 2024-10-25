@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import { EditorState } from "draft-js";
+import { useParams, useNavigate } from "react-router-dom";
+import { EditorState, convertFromRaw, convertToRaw } from "draft-js";
 import { Editor } from "react-draft-wysiwyg";
 import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
 import "draft-js/dist/Draft.css";
@@ -19,11 +19,15 @@ function TemplateEdit() {
     questionText: "",
     options: [],
   });
-  const [image, setImage] = useState(null);
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageFile, setImageFile] = useState(null);
   const [errors, setErrors] = useState([]);
   const [accessType, setAccessType] = useState("");
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState("");
+  const [userList, setUserList] = useState([]);
+  const [authorizedUsers, setAuthorizedUsers] = useState([]);
+  let navigate = useNavigate();
 
   const token =
     localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
@@ -32,31 +36,153 @@ function TemplateEdit() {
     userData = jwtDecode(token);
   }
 
+  const isValidRawDraftContentState = (contentState) => {
+    if (!contentState) {
+      console.error("Content state is null or undefined");
+      return false;
+    }
+    const { blocks, entityMap, selectionBefore, selectionAfter } = contentState;
+    if (!blocks || !Array.isArray(Object.values(blocks))) {
+      console.error("Invalid blocks structure:", blocks);
+      return false;
+    }
+    if (entityMap === undefined) {
+      console.error("Entity map is undefined");
+      return false;
+    }
+    if (!selectionBefore || !selectionAfter) {
+      console.error("Selection states are missing");
+      return false;
+    }
+    const blockKeys = Object.keys(blocks);
+    if (
+      !blockKeys.includes(selectionBefore.anchorKey) ||
+      !blockKeys.includes(selectionAfter.anchorKey)
+    ) {
+      console.error(
+        "Selection keys are invalid:",
+        selectionBefore,
+        selectionAfter
+      );
+      return false;
+    }
+    const blockText = blocks[selectionBefore.anchorKey].text;
+    if (
+      selectionBefore.anchorOffset < 0 ||
+      selectionBefore.anchorOffset > blockText.length ||
+      selectionAfter.anchorOffset < 0 ||
+      selectionAfter.anchorOffset > blockText.length
+    ) {
+      console.error(
+        "Selection offsets are out of bounds:",
+        selectionBefore,
+        selectionAfter
+      );
+      return false;
+    }
+    return true;
+  };
+
   const userId = userData.id;
 
   useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch(import.meta.env.VITE_API_USERS_FETCH);
+        if (!response.ok) {
+          throw new Error("Failed to fetch users");
+        }
+        const data = await response.json();
+        console.log("API Response:", data);
+        if (data.users && Array.isArray(data.users)) {
+          setUserList(data.users);
+        } else {
+          throw new Error("Received data.users is not an array");
+        }
+      } catch (err) {
+        setErrors([err.message]);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  const handleAccessTypeChange = (e) => {
+    setAccessType(e.target.value);
+    if (e.target.value === "public") {
+      setAuthorizedUsers([]);
+    }
+  };
+
+  const handleUserSelection = (e) => {
+    const userId = parseInt(e.target.value);
+    if (!authorizedUsers.includes(userId)) {
+      setAuthorizedUsers([...authorizedUsers, userId]);
+    }
+  };
+
+  const handleRemoveUser = (userId) => {
+    setAuthorizedUsers(authorizedUsers.filter((id) => id !== userId));
+  };
+
+  useEffect(() => {
     const fetchTemplate = async () => {
-      console.log(templateId);
       try {
         const response = await fetch(
           `${import.meta.env.VITE_API_TEMPLATES_FETCH_ONE}/${templateId}`
         );
         if (!response.ok) {
           const errorData = await response.json();
+          console.log(errorData.message);
           setErrors([errorData.message || "Failed to fetch template"]);
           return;
         }
         const templateData = await response.json();
+        console.log("Fetched template data:", templateData);
         setTitle(templateData.title);
         setCategory(templateData.category);
         setAccessType(templateData.accessType);
         setTags(templateData.tags);
         setQuestions(templateData.questions);
-        setEditorState(EditorState.createWithContent(templateData.description));
-        if (templateData.imageUrl) {
-          setImage({ preview: templateData.imageUrl });
+        const isValidRawDraftContentState = (contentState) => {
+          return (
+            contentState &&
+            contentState.blocks &&
+            Array.isArray(contentState.blocks)
+          );
+        };
+        if (templateData.picture) {
+          setImageUrl(templateData.picture);
+          setImageFile(null);
+        }
+        if (templateData.description) {
+          try {
+            const parsedDescription = JSON.parse(templateData.description);
+            console.log("Parsed description:", parsedDescription);
+            if (isValidRawDraftContentState(parsedDescription)) {
+              setEditorState(
+                EditorState.createWithContent(convertFromRaw(parsedDescription))
+              );
+            } else {
+              const fallbackSelection = {
+                anchorKey: Object.keys(parsedDescription.blockMap)[0],
+                anchorOffset: 0,
+                focusKey: Object.keys(parsedDescription.blockMap)[0],
+                focusOffset: 0,
+                isBackward: false,
+              };
+              parsedDescription.selectionBefore = fallbackSelection;
+              parsedDescription.selectionAfter = fallbackSelection;
+              setEditorState(
+                EditorState.createWithContent(convertFromRaw(parsedDescription))
+              );
+            }
+          } catch (jsonError) {
+            console.error("Error parsing description:", jsonError);
+            setErrors(["Invalid description format."]);
+          }
         }
       } catch (error) {
+        console.error("Error fetching template:", error);
         setErrors(["An unexpected error occurred while fetching template."]);
       }
     };
@@ -150,7 +276,7 @@ function TemplateEdit() {
 
     const file = acceptedFiles[0];
     file.preview = URL.createObjectURL(file);
-    setImage(file);
+    setImageFile(file);
     setErrors(null);
   }, []);
 
@@ -163,9 +289,9 @@ function TemplateEdit() {
     onDropRejected: () => setErrors("Only image files are allowed."),
   });
 
-  const removeImage = (e) => {
-    e.stopPropagation();
-    setImage(null);
+  const removeImage = () => {
+    setImageUrl(""); // Clear the URL
+    setImageFile(null); // Clear the file
   };
 
   const handleUpdate = async (e) => {
@@ -174,16 +300,16 @@ function TemplateEdit() {
       title: e.target.title.value,
       category: e.target.category.value,
       accessType: accessType,
-      description: JSON.stringify(editorState.getCurrentContent()),
+      description: JSON.stringify(convertToRaw(editorState.getCurrentContent())),
       questions: questions,
       tags: tags,
       imageUrl: null,
       userId: userId,
     };
     try {
-      if (image) {
+      if (imageFile) {
         const cloudinaryData = new FormData();
-        cloudinaryData.append("file", image);
+        cloudinaryData.append("file", imageFile);
         cloudinaryData.append(
           "upload_preset",
           import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
@@ -219,8 +345,9 @@ function TemplateEdit() {
         const errorData = await response.json();
         setErrors([errorData.message || "Something went wrong"]);
       } else {
+        const data = await response.json();
         console.log("Template updated successfully!");
-      }
+        navigate(`/template/show/${data.id}`);      }
     } catch (error) {
       setErrors(["An unexpected error occurred. Please try again later."]);
     }
@@ -263,7 +390,7 @@ function TemplateEdit() {
           <label className="font-rubik">Access type</label>
           <select
             value={accessType}
-            onChange={(e) => setAccessType(e.target.value)}
+            onChange={handleAccessTypeChange}
             className="mt-2 border dark:bg-[#374151] border-black/15 rounded-sm p-2 w-full"
           >
             <option value="">Select Access Type</option>
@@ -271,6 +398,46 @@ function TemplateEdit() {
             <option value="private">Private</option>
           </select>
         </section>
+        {accessType === "private" && (
+          <section className="md:col-span-4 col-span-1">
+            <div className="user-select-section relative">
+              <select
+                className="mb-2 border dark:bg-[#374151] border-black/15 rounded-sm p-2 w-full"
+                onChange={handleUserSelection}
+                value=""
+              >
+                <option value="" disabled>
+                  Select a user
+                </option>
+                {userList.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="selected-users-display md:col-span-4 border border-black/15 dark:bg-[#374151] rounded-sm p-4 mt-2 cursor-pointer bg-gray-100 flex flex-wrap">
+              {authorizedUsers.map((userId) => {
+                const user = userList.find((user) => user.id === userId);
+                return (
+                  <span
+                    key={userId}
+                    className="user-card bg-blue-200 text-blue-800 rounded-full px-3 py-1 mr-2 mb-2 flex items-center"
+                  >
+                    {user?.name}
+                    <button
+                      type="button"
+                      className="ml-2"
+                      onClick={() => handleRemoveUser(userId)}
+                    >
+                      ×
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          </section>
+        )}
         <section className="md:col-span-4">
           <label className="font-rubik">Description</label>
           <div className="mt-2 dark:bg-[#374151] border border-black/15 rounded-sm p-2">
@@ -450,23 +617,34 @@ function TemplateEdit() {
             className="border border-black/15 dark:bg-[#374151] rounded-sm p-4 mt-2 cursor-pointer bg-gray-100 flex justify-center items-center flex-col"
           >
             <input {...getInputProps()} />
-            {image ? (
+            {imageFile || imageUrl ? (
               ""
             ) : (
               <p>Drag & drop an image here, or click to select one</p>
             )}
-            {image && (
-              <div className="relative">
-                <img
-                  src={URL.createObjectURL(image)}
-                  alt="Uploaded"
-                  className="h-32 w-auto"
-                />
-                <button type="button" onClick={removeImage}>
-                  <IconTrash stroke={2} />
-                </button>
-              </div>
-            )}
+            <>
+              {imageUrl && (
+                <div className="relative">
+                  <img src={imageUrl} alt="Uploaded" className="h-32 w-auto" />
+                  <button type="button" onClick={removeImage}>
+                    <IconTrash stroke={2} />
+                  </button>
+                </div>
+              )}
+
+              {imageFile && (
+                <div className="relative">
+                  <img
+                    src={URL.createObjectURL(imageFile)}
+                    alt="Uploaded"
+                    className="h-32 w-auto"
+                  />
+                  <button type="button" onClick={removeImage}>
+                    <IconTrash stroke={2} />
+                  </button>
+                </div>
+              )}
+            </>
           </div>
         </section>
         <section className="md:col-span-4 col-span-1">
@@ -496,9 +674,7 @@ function TemplateEdit() {
           <div className="tags-display md:col-span-4 border border-black/15 dark:bg-[#374151] rounded-sm p-4 mt-2 cursor-pointer bg-gray-100 flex flex-wrap">
             {tags.map((tag, index) => (
               <span key={tag.id} className="tag-card">
-                {" "}
-                {/* Use tag.id as key */}
-                {tag.name} {/* Render the specific property */}
+                {tag.name}
                 <button type="button" onClick={() => handleRemoveTag(tag.id)}>
                   ×
                 </button>
@@ -506,16 +682,13 @@ function TemplateEdit() {
             ))}
           </div>
         </section>
-        {errors ? (
+        {errors && (
           <div className="errors mt-4 text-red-500 text-xs text-center">
             {errors.map((error, index) => (
-              <p key={index}>{error}</p> // Ensure 'error' is a string
+              <p key={index}>{error}</p>
             ))}
           </div>
-        ) : (
-          ""
         )}
-
         <section className="md:col-span-4">
           <button
             type="submit"

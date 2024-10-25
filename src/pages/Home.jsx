@@ -24,10 +24,22 @@ function Home() {
       try {
         const response = await fetch(import.meta.env.VITE_API_TEMPLATES_FETCH);
         const data = await response.json();
-        console.log(data);
 
         if (response.ok) {
-          setTemplates(data);
+          const filteredTemplates = data.filter((template) => {
+            if (userData?.role === "admin") {
+              return true;
+            }
+            if (template.createdBy === userId) {
+              return true;
+            }
+            return (
+              template.accessType === "public" ||
+              (template.accessType === "private" &&
+                template.authorizedUsers.some((user) => user.id === userId))
+            );
+          });
+          setTemplates(filteredTemplates);
         } else {
           setErrors([
             data.message ||
@@ -41,7 +53,7 @@ function Home() {
     };
 
     fetchTemplates();
-  }, []);
+  }, [userId, userData?.role]);
 
   const fetchFormsAndAnswers = async (userId) => {
     if (!userId) return;
@@ -155,17 +167,19 @@ function Home() {
         {forms.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
             {forms.map((form, index) => (
-              <div
-                key={form.id || `form-${index}`}
-                className="bg-white dark:bg-[#1f2937] rounded-md shadow-md p-4"
-              >
-                <h3 className="font-rubik text-lg font-semibold">
-                  {form.template ? form.template.title : "No Title Available"}
-                </h3>
-                <p className="font-rubik text-sm opacity-70">
-                  Template by: {form.user}
-                </p>
-              </div>
+              <Link key={form.id || `form-${index}`} to={`/form/${form.templateId}/${form.id}`}
+>
+                <div
+                  className="bg-white dark:bg-[#1f2937] rounded-md shadow-md p-4"
+                >
+                  <h3 className="font-rubik text-lg font-semibold">
+                    {form.template ? form.template.title : "No Title Available"}
+                  </h3>
+                  <p className="font-rubik text-sm opacity-70">
+                    Template by: {form.user}
+                  </p>
+                </div>
+              </Link>
             ))}
           </div>
         ) : (

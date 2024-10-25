@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { EditorState } from "draft-js";
+import { EditorState, convertToRaw } from "draft-js";
 import { Editor } from "react-draft-wysiwyg";
 import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
 import "draft-js/dist/Draft.css";
@@ -21,6 +21,8 @@ function TemplateForm() {
   const [image, setImage] = useState(null);
   const [errors, setErrors] = useState([]);
   const [accessType, setAccessType] = useState("");
+  const [authorizedUsers, setAuthorizedUsers] = useState([]);
+  const [userList, setUserList] = useState([]);
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState("");
   let navigate = useNavigate();
@@ -32,10 +34,49 @@ function TemplateForm() {
     userData = jwtDecode(token);
   }
 
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch(import.meta.env.VITE_API_USERS_FETCH);
+        if (!response.ok) {
+          throw new Error("Failed to fetch users");
+        }
+        const data = await response.json();
+        console.log("API Response:", data);
+        if (data.users && Array.isArray(data.users)) {
+          setUserList(data.users);
+        } else {
+          throw new Error("Received data.users is not an array");
+        }
+      } catch (err) {
+        setErrors([err.message]);
+      }
+    };
+    fetchUsers();
+  }, []);
+
   const userId = userData.id;
 
   const handleEditorChange = (state) => {
     setEditorState(state);
+  };
+
+  const handleAccessTypeChange = (e) => {
+    setAccessType(e.target.value);
+    if (e.target.value === "public") {
+      setAuthorizedUsers([]);
+    }
+  };
+
+  const handleUserSelection = (e) => {
+    const userId = parseInt(e.target.value);
+    if (!authorizedUsers.includes(userId)) {
+      setAuthorizedUsers([...authorizedUsers, userId]);
+    }
+  };
+
+  const handleRemoveUser = (userId) => {
+    setAuthorizedUsers(authorizedUsers.filter((id) => id !== userId));
   };
 
   const handleQuestionTypeChange = (e, index) => {
@@ -144,8 +185,9 @@ function TemplateForm() {
       title: e.target.title.value,
       category: e.target.category.value,
       accessType: accessType,
-      description: JSON.stringify(editorState.getCurrentContent()),
+      description: JSON.stringify(convertToRaw(editorState.getCurrentContent())),
       questions: questions,
+      authorizedUsers: authorizedUsers,
       tags: tags,
       imageUrl: null,
       userId: userId,
@@ -232,7 +274,7 @@ function TemplateForm() {
           <label className="font-rubik">Access type</label>
           <select
             value={accessType}
-            onChange={(e) => setAccessType(e.target.value)}
+            onChange={handleAccessTypeChange}
             className="mt-2 border dark:bg-[#374151] border-black/15 rounded-sm p-2 w-full"
           >
             <option value="">Select Access Type</option>
@@ -240,6 +282,46 @@ function TemplateForm() {
             <option value="private">Private</option>
           </select>
         </section>
+        {accessType === "private" && (
+          <section className="md:col-span-4 col-span-1">
+            <div className="user-select-section relative">
+              <select
+                className="mb-2 border dark:bg-[#374151] border-black/15 rounded-sm p-2 w-full"
+                onChange={handleUserSelection}
+                value=""
+              >
+                <option value="" disabled>
+                  Select a user
+                </option>
+                {userList.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="selected-users-display md:col-span-4 border border-black/15 dark:bg-[#374151] rounded-sm p-4 mt-2 cursor-pointer bg-gray-100 flex flex-wrap">
+              {authorizedUsers.map((userId) => {
+                const user = userList.find((user) => user.id === userId);
+                return (
+                  <span
+                    key={userId}
+                    className="user-card bg-blue-200 text-blue-800 rounded-full px-3 py-1 mr-2 mb-2 flex items-center"
+                  >
+                    {user?.name}
+                    <button
+                      type="button"
+                      className="ml-2"
+                      onClick={() => handleRemoveUser(userId)}
+                    >
+                      ×
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          </section>
+        )}
         <section className="md:col-span-4">
           <label className="font-rubik">Description</label>
           <div className="mt-2 dark:bg-[#374151] border border-black/15 rounded-sm p-2">

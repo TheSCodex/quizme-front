@@ -120,7 +120,7 @@ const TemplateDetails = () => {
     };
 
     loadTemplateAndAnswers();
-  }, [templateId]);
+  }, [templateId, userId, userData?.role]);
 
   const handleAnswerChange = (questionId, response) => {
     setNewAnswers((prev) => ({
@@ -186,7 +186,7 @@ const TemplateDetails = () => {
       <div className="bg-white dark:bg-[#1f2937] p-6 rounded-md drop-shadow">
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-bold">{template.title}</h1>
-          {/* {isOwnerOrAdmin && (
+          {isOwnerOrAdmin && (
             <div>
               <button className="btn btn-primary">
                 <IconEdit
@@ -199,7 +199,7 @@ const TemplateDetails = () => {
                 <IconTrash color="#a1a1a1" stroke={2} />
               </button>
             </div>
-          )} */}
+          )}
         </div>
         <img
           src={template.picture}
@@ -207,10 +207,15 @@ const TemplateDetails = () => {
           alt={template.title}
         />
         <form onSubmit={handleSubmit} className="flex flex-col mt-4">
-          <section className="grid md:grid-cols-2">
+          <section className="grid md:grid-cols-2 gap-6">
             {template.questions.map((question) => (
-              <div key={question.id} className="question mb-4 text-center">
-                <h2 className="font-semibold mb-2">{question.questionText}</h2>
+              <div
+                key={question.id}
+                className="mb-4 question p-4 bg-slate-200 rounded-lg drop-shadow dark:bg-[#374151]"
+              >
+                <h2 className="font-semibold text-lg text-center mb-4">
+                  {question.questionText}
+                </h2>
                 <div className="w-full max-w-md mx-auto">
                   {question.questionType === "text" && (
                     <input
@@ -219,7 +224,8 @@ const TemplateDetails = () => {
                         handleAnswerChange(question.id, e.target.value)
                       }
                       value={newAnswers[question.id] || ""}
-                      className="border border-black/15 dark:bg-[#374151] rounded-sm p-2 w-full"
+                      className="border border-gray-300 dark:border-gray-600 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-300 transition"
+                      placeholder={`Your answer...`}
                     />
                   )}
                   {question.questionType === "number" && (
@@ -231,7 +237,8 @@ const TemplateDetails = () => {
                         handleAnswerChange(question.id, e.target.value)
                       }
                       value={newAnswers[question.id] || ""}
-                      className="border border-black/15 dark:bg-[#374151] rounded-sm p-2 w-full"
+                      className="border border-gray-300 dark:border-gray-600 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-300 transition"
+                      placeholder={`Enter a number...`}
                     />
                   )}
                   {question.questionType === "multiple_choice" &&
@@ -249,7 +256,7 @@ const TemplateDetails = () => {
                           onChange={() =>
                             handleAnswerChange(question.id, option)
                           }
-                          className="mr-2"
+                          className="mr-2 h-5 w-5 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-300"
                         />
                         <label className="ml-2">{option}</label>
                       </div>
@@ -268,7 +275,7 @@ const TemplateDetails = () => {
                           onChange={() =>
                             handleCheckboxChange(question.id, option)
                           }
-                          className="mr-2"
+                          className="mr-2 h-5 w-5 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-300"
                         />
                         <label className="ml-2">{option}</label>
                       </div>
@@ -277,6 +284,7 @@ const TemplateDetails = () => {
               </div>
             ))}
           </section>
+
           <button
             type="submit"
             className="btn btn-success bg-[#117ACD] text-white font-rubik p-2 mx-auto rounded-md"

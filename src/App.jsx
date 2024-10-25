@@ -1,4 +1,10 @@
-import { useRoutes, BrowserRouter as Router, Navigate } from "react-router-dom";
+import {
+  useRoutes,
+  BrowserRouter as Router,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
+import PropTypes from "prop-types";
 import { jwtDecode } from "jwt-decode";
 import Layout from "./components/Layout.jsx";
 import Login from "./pages/Auth/Login.jsx";
@@ -26,6 +32,27 @@ const AppRoutes = () => {
     isAdmin = decodedToken.role === "admin";
   }
 
+  const ProtectedRoute = ({ children }) => {
+    const location = useLocation();
+    return isLoggedIn ? (
+      children
+    ) : (
+      <Navigate to="/login" state={{ from: location }} replace />
+    );
+  };
+
+  ProtectedRoute.propTypes = {
+    children: PropTypes.node,
+  };
+
+  const AdminRoute = ({ children }) => {
+    return isAdmin ? children : <Navigate to="/" replace />;
+  };
+
+  AdminRoute.propTypes = {
+    children: PropTypes.node,
+  };
+
   const routes = useRoutes([
     {
       path: "/",
@@ -35,18 +62,44 @@ const AppRoutes = () => {
         { path: "templates", element: <Templates /> },
         {
           path: "templates/new",
-          element: isLoggedIn ? <TemplateForm /> : <Navigate to="/login" />,
+          element: (
+            <ProtectedRoute>
+              <TemplateForm />
+            </ProtectedRoute>
+          ),
         },
-        { path: "template/show/:templateId", element: <Template /> },
+        {
+          path: "template/show/:templateId",
+          element: (
+            <ProtectedRoute>
+              <Template />
+            </ProtectedRoute>
+          ),
+        },
         {
           path: "template/edit/:templateId",
-          element: isLoggedIn ? <TemplateEdit /> : <Navigate to="/login" />,
+          element: (
+            <ProtectedRoute>
+              <TemplateEdit />
+            </ProtectedRoute>
+          ),
         },
         {
           path: "admin/users",
-          element: isAdmin ? <Users /> : <Navigate to="/" />,
+          element: (
+            <AdminRoute>
+              <Users />
+            </AdminRoute>
+          ),
         },
-        { path: "form/:templateId/:formId", element: <Form /> },
+        {
+          path: "form/:templateId/:formId",
+          element: (
+            <ProtectedRoute>
+              <Form />
+            </ProtectedRoute>
+          ),
+        },
       ],
     },
     { path: "login", element: <Login /> },

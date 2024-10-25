@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { EditorState, convertFromRaw, convertToRaw } from "draft-js";
+import Swal from "sweetalert2";
 import { Editor } from "react-draft-wysiwyg";
 import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
 import "draft-js/dist/Draft.css";
@@ -28,62 +29,22 @@ function TemplateEdit() {
   const [userList, setUserList] = useState([]);
   const [authorizedUsers, setAuthorizedUsers] = useState([]);
   let navigate = useNavigate();
+  const [userData, setUserData] = useState(null);
 
-  const token =
-    localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-  let userData = null;
-  if (token) {
-    userData = jwtDecode(token);
-  }
+  useEffect(() => {
+    const token =
+      localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+    if (token) {
+      try {
+        const userData = jwtDecode(token);
+        setUserData(userData);
+      } catch (error) {
+        console.error("Invalid token:", error);
+      }
+    }
+  }, []);
 
-  const isValidRawDraftContentState = (contentState) => {
-    if (!contentState) {
-      console.error("Content state is null or undefined");
-      return false;
-    }
-    const { blocks, entityMap, selectionBefore, selectionAfter } = contentState;
-    if (!blocks || !Array.isArray(Object.values(blocks))) {
-      console.error("Invalid blocks structure:", blocks);
-      return false;
-    }
-    if (entityMap === undefined) {
-      console.error("Entity map is undefined");
-      return false;
-    }
-    if (!selectionBefore || !selectionAfter) {
-      console.error("Selection states are missing");
-      return false;
-    }
-    const blockKeys = Object.keys(blocks);
-    if (
-      !blockKeys.includes(selectionBefore.anchorKey) ||
-      !blockKeys.includes(selectionAfter.anchorKey)
-    ) {
-      console.error(
-        "Selection keys are invalid:",
-        selectionBefore,
-        selectionAfter
-      );
-      return false;
-    }
-    const blockText = blocks[selectionBefore.anchorKey].text;
-    if (
-      selectionBefore.anchorOffset < 0 ||
-      selectionBefore.anchorOffset > blockText.length ||
-      selectionAfter.anchorOffset < 0 ||
-      selectionAfter.anchorOffset > blockText.length
-    ) {
-      console.error(
-        "Selection offsets are out of bounds:",
-        selectionBefore,
-        selectionAfter
-      );
-      return false;
-    }
-    return true;
-  };
-
-  const userId = userData.id;
+  const userId = userData?.id;
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -300,7 +261,9 @@ function TemplateEdit() {
       title: e.target.title.value,
       category: e.target.category.value,
       accessType: accessType,
-      description: JSON.stringify(convertToRaw(editorState.getCurrentContent())),
+      description: JSON.stringify(
+        convertToRaw(editorState.getCurrentContent())
+      ),
       questions: questions,
       tags: tags,
       imageUrl: null,
@@ -347,7 +310,14 @@ function TemplateEdit() {
       } else {
         const data = await response.json();
         console.log("Template updated successfully!");
-        navigate(`/template/show/${data.id}`);      }
+        Swal.fire({
+          title: "Success!",
+          text: "Your template has been updated successfully.",
+          icon: "success",
+          confirmButtonText: "OK",
+        });
+        navigate(`/template/show/${data.id}`);
+      }
     } catch (error) {
       setErrors(["An unexpected error occurred. Please try again later."]);
     }

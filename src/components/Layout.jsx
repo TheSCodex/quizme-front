@@ -112,13 +112,32 @@ function Layout() {
   const [searchQuery, setSearchQuery] = useState("");
   const [templates, setTemplates] = useState([]);
   const [errors, setErrors] = useState([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const token =
+      localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+    if (token) {
+      try {
+        const userData = jwtDecode(token);
+        setUserData(userData);
+      } catch (error) {
+        console.error("Invalid token:", error);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isLoggedIn && userData.role === "admin") {
+      setIsAdmin(true);
+    }
+  }, [isLoggedIn, userData.role]);
 
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
         const response = await fetch(import.meta.env.VITE_API_TEMPLATES_FETCH);
         const data = await response.json();
-        console.log(data);
 
         if (response.ok) {
           setTemplates(data);
@@ -338,7 +357,7 @@ function Layout() {
               Forms
             </a>
           </li>
-          {isLoggedIn && userData.role === "admin" && (
+          {isAdmin && (
             <>
               <li
                 className={`${

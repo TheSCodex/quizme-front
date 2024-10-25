@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
+import Swal from "sweetalert2";
 import { useParams, useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+import { IconEdit, IconEditOff, IconTrash } from "@tabler/icons-react";
 import "draft-js/dist/Draft.css";
 import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
-import OptionPercentageChart from "../../utils/percentageChart.jsx";
 
 const Form = () => {
   const { templateId, formId } = useParams();
@@ -12,18 +13,26 @@ const Form = () => {
   const [newAnswers, setNewAnswers] = useState({});
   const [isOwnerOrAdmin, setIsOwnerOrAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [statistics, setStatistics] = useState(null);
-  const [error, setError] = useState(null);
+  const [errors, setErrors] = useState([]);
   const navigate = useNavigate();
+  const [userData, setUserData] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
 
-  const token =
-    localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-  let userData = null;
-  if (token) {
-    userData = jwtDecode(token);
-  }
+  useEffect(() => {
+    const token =
+      localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+    if (token) {
+      try {
+        const userData = jwtDecode(token);
+        setUserData(userData);
+      } catch (error) {
+        console.error("Invalid token:", error);
+      }
+    }
+  }, []);
 
   const userId = userData?.id;
+  const userRole = userData?.role;
 
   useEffect(() => {
     const fetchTemplateDetails = async () => {
@@ -36,21 +45,17 @@ const Form = () => {
         }
         const data = await response.json();
         setTemplate(data);
-        setIsOwnerOrAdmin(
-          data.createdBy === userId || userData.role === "admin"
-        );
-        return data;
+        setIsOwnerOrAdmin(data.createdBy === userId || userRole === "admin");
       } catch (error) {
         console.error(error);
         setLoading(false);
-        return null;
       }
     };
 
     const fetchAnswers = async () => {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_FORMS_FETCH}/${formId}` // Fetch answers for specific formId
+          `${import.meta.env.VITE_API_FORMS_FETCH}/${formId}`
         );
         if (!response.ok) {
           throw new Error("Failed to fetch answers");
@@ -61,25 +66,31 @@ const Form = () => {
             acc[answer.questionId] = answer.response;
             return acc;
           }, {});
-          setNewAnswers(formattedAnswers); // Set existing answers
+          setNewAnswers(formattedAnswers);
         }
         setAnswers(formData.answers || []);
       } catch (error) {
         console.error(error);
+        setErrors([
+          error ||
+            "An unexpected error occurred while trying to get the form. Please try again later.",
+        ]);
       } finally {
         setLoading(false);
+        console.log("Answers", answers);
+        console.log("New Answers", newAnswers);
       }
     };
 
     const loadTemplateAndAnswers = async () => {
-      const templateData = await fetchTemplateDetails();
-      if (templateData) {
-        await fetchAnswers();
-      }
+      await fetchTemplateDetails();
+      await fetchAnswers();
     };
 
     loadTemplateAndAnswers();
-  }, [templateId, formId, userData.role, userId]);
+  }, [templateId, formId, userId]);
+
+  const toggleEdit = () => setIsEditing((prev) => !prev);
 
   const handleAnswerChange = (questionId, response) => {
     setNewAnswers((prev) => ({
@@ -105,29 +116,84 @@ const Form = () => {
     });
   };
 
+  const handleDelete = async (e) => {
+    e.preventDefault();
+    const formId = template.id;  
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "This action cannot be undone.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "No, cancel!",
+    });
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_FORM_DELETE}/${formId}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message);
+        }  
+        await Swal.fire({
+          title: "Deleted!",
+          text: "Your form has been deleted.",
+          icon: "success",
+          confirmButtonText: "OK",
+        });
+        navigate(-1);
+      } catch (error) {
+        console.error("Error deleting form:", error.message);
+        await Swal.fire({
+          title: "Error!",
+          text: "There was a problem deleting your form.",
+          icon: "error",
+          confirmButtonText: "OK",
+        });
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    const answersToSubmit = Object.keys(newAnswers).map((questionId) => ({
-      questionId,
-      response: newAnswers[questionId],
-    }));
+    const formId = template.id;
+    const answersToSubmit = Object.entries(newAnswers).map(
+      ([questionId, response]) => ({
+        questionId,
+        response,
+      })
+    );
     try {
-      const response = await fetch(import.meta.env.VITE_API_FORM_CREATE, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ userId, answers: answersToSubmit, templateId }),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_FORM_UPDATE}/${formId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ answers: answersToSubmit }),
+        }
+      );
       if (!response.ok) {
-        throw new Error("Failed to submit answers");
+        const errorData = await response.json();
+        throw new Error(errorData.message);
       }
-      const newAnswerData = await response.json();
-      setAnswers((prev) => [...prev, newAnswerData]);
-      setNewAnswers({});
+      Swal.fire({
+        title: "Success!",
+        text: "Your answers have been updated successfully.",
+        icon: "success",
+        confirmButtonText: "OK",
+      });
+      setIsEditing(false);
     } catch (error) {
-      console.error(error);
+      console.error("Error updating form:", error.message);
     }
   };
 
@@ -143,6 +209,22 @@ const Form = () => {
     <div className="bg-white dark:bg-[#1f2937] p-6 rounded-md drop-shadow">
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold">{template.title}</h1>
+        <div>
+          {isOwnerOrAdmin && isEditing ? (
+            <button>
+              <IconEditOff onClick={toggleEdit} />
+            </button>
+          ) : (
+            <button>
+              <IconEdit onClick={toggleEdit} />
+            </button>
+          )}
+          {isOwnerOrAdmin && (
+            <button>
+              <IconTrash  onClick={handleDelete}/>
+            </button>
+          )}
+        </div>
       </div>
       <img
         src={template.picture}
@@ -167,10 +249,13 @@ const Form = () => {
                       handleAnswerChange(question.id, e.target.value)
                     }
                     value={newAnswers[question.id] || ""}
-                    className="border border-gray-300 dark:border-gray-600 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-300 transition"
-                    placeholder={`Your answer...`}
+                    disabled={!isEditing} // Disable if not editing
+                    className="border border-gray-300 dark:border-gray-600 text-black rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-300 transition"
+                    placeholder="Your answer..."
                   />
                 )}
+
+                {/* Number Input */}
                 {question.questionType === "number" && (
                   <input
                     type="number"
@@ -180,12 +265,14 @@ const Form = () => {
                       handleAnswerChange(question.id, e.target.value)
                     }
                     value={newAnswers[question.id] || ""}
+                    disabled={!isEditing} // Disable if not editing
                     className="border border-gray-300 dark:border-gray-600 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-300 transition"
-                    placeholder={`Enter a number...`}
+                    placeholder="Enter a number..."
                   />
                 )}
+
+                {/* Multiple Choice */}
                 {question.questionType === "multiple_choice" &&
-                  question.options &&
                   question.options.map((option) => (
                     <div
                       key={option}
@@ -197,13 +284,15 @@ const Form = () => {
                         value={option}
                         checked={newAnswers[question.id] === option}
                         onChange={() => handleAnswerChange(question.id, option)}
+                        disabled={!isEditing} // Disable if not editing
                         className="mr-2 h-5 w-5 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-300"
                       />
                       <label className="ml-2">{option}</label>
                     </div>
                   ))}
+
+                {/* Checkbox */}
                 {question.questionType === "checkbox" &&
-                  question.options &&
                   question.options.map((option) => (
                     <div
                       key={option}
@@ -212,10 +301,13 @@ const Form = () => {
                       <input
                         type="checkbox"
                         value={option}
-                        checked={newAnswers[question.id]?.includes(option)}
+                        checked={
+                          newAnswers[question.id]?.includes(option) || false
+                        }
                         onChange={() =>
                           handleCheckboxChange(question.id, option)
                         }
+                        disabled={!isEditing} // Disable if not editing
                         className="mr-2 h-5 w-5 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-300"
                       />
                       <label className="ml-2">{option}</label>
@@ -225,6 +317,21 @@ const Form = () => {
             </div>
           ))}
         </section>
+        {errors.length > 0 && (
+          <div className="errors mt-4 text-red-500 text-xs text-center">
+            {errors.map((error, index) => (
+              <p key={index}>{error}</p>
+            ))}
+          </div>
+        )}
+        {isEditing && (
+          <button
+            type="submit"
+            className="mt-4 w-full bg-blue-600 text-white font-semibold py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-300"
+          >
+            Submit Answers
+          </button>
+        )}
       </form>
     </div>
   );

@@ -9,13 +9,22 @@ function Home() {
   const [errors, setErrors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [forms, setForms] = useState([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userData, setUserData] = useState(null);
 
-  const token =
-    localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-  let userData = null;
-  if (token) {
-    userData = jwtDecode(token);
-  }
+  useEffect(() => {
+    const token =
+      localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+    if (token) {
+      try {
+        const userData = jwtDecode(token);
+        setIsLoggedIn(true);
+        setUserData(userData);
+      } catch (error) {
+        console.error("Invalid token:", error);
+      }
+    }
+  }, []);
 
   const userId = userData?.id;
 

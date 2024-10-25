@@ -7,6 +7,7 @@ import "draft-js/dist/Draft.css";
 import { useDropzone } from "react-dropzone";
 import { IconTrash, IconPlus } from "@tabler/icons-react";
 import { jwtDecode } from "jwt-decode";
+import Swal from "sweetalert2";
 
 function TemplateForm() {
   const [editorState, setEditorState] = useState(EditorState.createEmpty());
@@ -26,13 +27,22 @@ function TemplateForm() {
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState("");
   let navigate = useNavigate();
+  const [userData, setUserData] = useState(null);
 
-  const token =
-    localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-  let userData = null;
-  if (token) {
-    userData = jwtDecode(token);
-  }
+  useEffect(() => {
+    const token =
+      localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+    if (token) {
+      try {
+        const userData = jwtDecode(token);
+        setUserData(userData);
+      } catch (error) {
+        console.error("Invalid token:", error);
+      }
+    }
+  }, []);
+
+  const userId = userData?.id;
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -54,8 +64,6 @@ function TemplateForm() {
     };
     fetchUsers();
   }, []);
-
-  const userId = userData.id;
 
   const handleEditorChange = (state) => {
     setEditorState(state);
@@ -185,7 +193,9 @@ function TemplateForm() {
       title: e.target.title.value,
       category: e.target.category.value,
       accessType: accessType,
-      description: JSON.stringify(convertToRaw(editorState.getCurrentContent())),
+      description: JSON.stringify(
+        convertToRaw(editorState.getCurrentContent())
+      ),
       questions: questions,
       authorizedUsers: authorizedUsers,
       tags: tags,
@@ -230,6 +240,12 @@ function TemplateForm() {
       } else {
         const data = await response.json();
         console.log("Template created successfully!");
+        Swal.fire({
+          title: "Success!",
+          text: "Your template has been created successfully.",
+          icon: "success",
+          confirmButtonText: "OK",
+        });
         navigate(`/template/show/${data.id}`);
       }
     } catch (error) {

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+import Swal from "sweetalert2";
 import { IconEdit, IconTrash } from "@tabler/icons-react";
 import "draft-js/dist/Draft.css";
 import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
@@ -17,13 +18,20 @@ const TemplateDetails = () => {
   const [statistics, setStatistics] = useState(null);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const [userData, setUserData] = useState(null);
 
-  const token =
-    localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-  let userData = null;
-  if (token) {
-    userData = jwtDecode(token);
-  }
+  useEffect(() => {
+    const token =
+      localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+    if (token) {
+      try {
+        const userData = jwtDecode(token);
+        setUserData(userData);
+      } catch (error) {
+        console.error("Invalid token:", error);
+      }
+    }
+  }, []);
 
   const userId = userData?.id;
 
@@ -173,6 +181,51 @@ const TemplateDetails = () => {
     }
   };
 
+  const handleDelete = async (e) => {
+    e.preventDefault();
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "This action cannot be undone.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "No, cancel!",
+    });
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_TEMPLATES_DELETE}/${templateId}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ userId }),
+          }
+        );
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message);
+        }  
+        await Swal.fire({
+          title: "Deleted!",
+          text: "Your template has been deleted.",
+          icon: "success",
+          confirmButtonText: "OK",
+        });
+        navigate(-1);
+      } catch (error) {
+        console.error("Error deleting form:", error.message);
+        await Swal.fire({
+          title: "Error!",
+          text: "There was a problem deleting your template.",
+          icon: "error",
+          confirmButtonText: "OK",
+        });
+      }
+    }
+  };
+
   const handleEdit = (templateId) => {
     navigate(`/template/edit/${templateId}`, { replace: true });
   };
@@ -196,7 +249,7 @@ const TemplateDetails = () => {
                 />
               </button>
               <button className="btn btn-primary">
-                <IconTrash color="#a1a1a1" stroke={2} />
+                <IconTrash color="#a1a1a1" stroke={2} onClick={handleDelete} />
               </button>
             </div>
           )}

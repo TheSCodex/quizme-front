@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import background from "../../assets/background.jpg";
 import logo from "../../assets/logo.png";
 
@@ -11,6 +11,8 @@ function Login() {
   const [rememberMe, setRememberMe] = useState(false);
 
   let navigate = useNavigate();
+  let location = useLocation();
+  const from = location.state?.from?.pathname || "/";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,15 +24,14 @@ function Login() {
         },
         body: JSON.stringify({ email, password }),
       });
-
       const data = await response.json();
-
       if (response.ok) {
-        sessionStorage.setItem("authToken", data.token);
         if (rememberMe) {
           localStorage.setItem("authToken", data.token);
+        } else {
+          sessionStorage.setItem("authToken", data.token);
         }
-        navigate("/");
+        navigate(from, { replace: true });
       } else {
         console.log(data.message);
         setErrors([

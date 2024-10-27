@@ -286,6 +286,7 @@ const TemplateDetails = () => {
                       value={newAnswers[question.id] || ""}
                       className="border border-gray-300 dark:border-gray-600 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-300 transition"
                       placeholder={`Your answer...`}
+                      required
                     />
                   )}
                   {question.questionType === "number" && (
@@ -299,6 +300,7 @@ const TemplateDetails = () => {
                       value={newAnswers[question.id] || ""}
                       className="border border-gray-300 dark:border-gray-600 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-300 transition"
                       placeholder={`Enter a number...`}
+                      required
                     />
                   )}
                   {question.questionType === "multiple_choice" &&
@@ -313,6 +315,7 @@ const TemplateDetails = () => {
                           name={question.id}
                           value={option}
                           checked={newAnswers[question.id] === option}
+                          required
                           onChange={() =>
                             handleAnswerChange(question.id, option)
                           }
@@ -332,6 +335,7 @@ const TemplateDetails = () => {
                           type="checkbox"
                           value={option}
                           checked={newAnswers[question.id]?.includes(option)}
+                          required
                           onChange={() =>
                             handleCheckboxChange(question.id, option)
                           }

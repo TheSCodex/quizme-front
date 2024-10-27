@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import Swal from "sweetalert2"; // Import SweetAlert
-import { jwtDecode } from "jwt-decode";
+import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 
 function Users() {
   const [users, setUsers] = useState([]);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -27,15 +28,28 @@ function Users() {
     fetchUsers();
   }, []);
 
+  const handleEditUser = (user) => {
+    navigate("/user/settings", {
+      state: {
+        userId: user.id,
+        userData: {
+          name: user.name,
+          email: user.email,
+          theme: user.theme || "light",
+        },
+      },
+    });
+  };
+
   const handleDeleteUser = async (userId) => {
     const result = await Swal.fire({
-      title: 'Are you sure?',
+      title: "Are you sure?",
       text: "You won't be able to revert this!",
-      icon: 'warning',
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, delete it!'
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, delete it!",
     });
 
     if (result.isConfirmed) {
@@ -52,11 +66,7 @@ function Users() {
           throw new Error("Failed to delete user");
         }
         setUsers(users.filter((user) => user.id !== userId));
-        Swal.fire(
-          'Deleted!',
-          'User has been deleted.',
-          'success'
-        );
+        Swal.fire("Deleted!", "User has been deleted.", "success");
       } catch (err) {
         setError(err.message);
       }
@@ -65,13 +75,13 @@ function Users() {
 
   const handleBlockUser = async (userId) => {
     const result = await Swal.fire({
-      title: 'Are you sure?',
+      title: "Are you sure?",
       text: "Do you really want to block this user?",
-      icon: 'warning',
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, block it!'
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, block it!",
     });
 
     if (result.isConfirmed) {
@@ -93,11 +103,7 @@ function Users() {
             user.id === userId ? { ...user, blocked: true } : user
           )
         );
-        Swal.fire(
-          'Blocked!',
-          'User has been blocked.',
-          'success'
-        );
+        Swal.fire("Blocked!", "User has been blocked.", "success");
       } catch (err) {
         setError(err.message);
       }
@@ -106,13 +112,13 @@ function Users() {
 
   const handleUnblockUser = async (userId) => {
     const result = await Swal.fire({
-      title: 'Are you sure?',
+      title: "Are you sure?",
       text: "Do you really want to unblock this user?",
-      icon: 'warning',
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, unblock it!'
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, unblock it!",
     });
 
     if (result.isConfirmed) {
@@ -134,11 +140,7 @@ function Users() {
             user.id === userId ? { ...user, blocked: false } : user
           )
         );
-        Swal.fire(
-          'Unblocked!',
-          'User has been unblocked.',
-          'success'
-        );
+        Swal.fire("Unblocked!", "User has been unblocked.", "success");
       } catch (err) {
         setError(err.message);
       }
@@ -147,13 +149,13 @@ function Users() {
 
   const handlePromote = async (userId) => {
     const result = await Swal.fire({
-      title: 'Are you sure?',
+      title: "Are you sure?",
       text: "Do you really want to promote this user?",
-      icon: 'warning',
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Yes, promote it!'
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, promote it!",
     });
 
     if (result.isConfirmed) {
@@ -174,11 +176,7 @@ function Users() {
             user.id === userId ? { ...user, role: "admin" } : user
           )
         );
-        Swal.fire(
-          'Promoted!',
-          'User has been promoted.',
-          'success'
-        );
+        Swal.fire("Promoted!", "User has been promoted.", "success");
       } catch (error) {
         setError(error.message);
       }
@@ -187,13 +185,13 @@ function Users() {
 
   const handleDemote = async (userId) => {
     const result = await Swal.fire({
-      title: 'Are you sure?',
+      title: "Are you sure?",
       text: "Do you really want to demote this user?",
-      icon: 'warning',
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Yes, demote it!'
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, demote it!",
     });
 
     if (result.isConfirmed) {
@@ -214,11 +212,7 @@ function Users() {
             user.id === userId ? { ...user, role: "user" } : user
           )
         );
-        Swal.fire(
-          'Demoted!',
-          'User has been demoted.',
-          'success'
-        );
+        Swal.fire("Demoted!", "User has been demoted.", "success");
       } catch (error) {
         setError(error.message);
       }
@@ -270,39 +264,45 @@ function Users() {
                 </td>
                 <td className="border-b border-gray-300 p-4 dark:border-gray-600 flex space-x-2">
                   <button
+                    onClick={() => handleEditUser(user)}
+                    className="bg-blue-500 text-white font-semibold py-2 px-4 rounded hover:bg-blue-600 transition duration-200"
+                  >
+                    Edit
+                  </button>
+                  <button
                     onClick={() => handleDeleteUser(user.id)}
-                    className="bg-red-500 text-white rounded px-3 py-1 hover:bg-red-600 transition-colors duration-200"
+                    className="bg-red-500 text-white font-semibold py-2 px-4 rounded hover:bg-red-600 transition duration-200"
                   >
                     Delete
                   </button>
                   {user.blocked ? (
                     <button
                       onClick={() => handleUnblockUser(user.id)}
-                      className="bg-green-500 text-white rounded px-3 py-1 hover:bg-green-600 transition-colors duration-200"
+                      className="bg-green-500 text-white font-semibold py-2 px-4 rounded hover:bg-green-600 transition duration-200"
                     >
                       Unblock
                     </button>
                   ) : (
                     <button
                       onClick={() => handleBlockUser(user.id)}
-                      className="bg-gray-500 text-white rounded px-3 py-1 hover:bg-gray-600 transition-colors duration-200"
+                      className="bg-yellow-500 text-white font-semibold py-2 px-4 rounded hover:bg-yellow-600 transition duration-200"
                     >
                       Block
                     </button>
                   )}
-                  {user.roleId === 2 ? (
+                  {user.roleId === 1 ? (
                     <button
-                      onClick={() => handlePromote(user.id)}
-                      className="bg-blue-500 text-white rounded px-3 py-1 hover:bg-blue-600 transition-colors duration-200"
+                      onClick={() => handleDemote(user.id)}
+                      className="bg-blue-500 text-white font-semibold py-2 px-4 rounded hover:bg-blue-600 transition duration-200"
                     >
-                      Promote
+                      Demote
                     </button>
                   ) : (
                     <button
-                      onClick={() => handleDemote(user.id)}
-                      className="bg-yellow-500 text-white rounded px-3 py-1 hover:bg-yellow-600 transition-colors duration-200"
+                      onClick={() => handlePromote(user.id)}
+                      className="bg-blue-500 text-white font-semibold py-2 px-4 rounded hover:bg-blue-600 transition duration-200"
                     >
-                      Demote
+                      Promote
                     </button>
                   )}
                 </td>
@@ -311,7 +311,7 @@ function Users() {
           ) : (
             <tr>
               <td colSpan="5" className="text-center p-4">
-                No users available.
+                No users found
               </td>
             </tr>
           )}

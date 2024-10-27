@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Outlet } from "react-router-dom";
 import { createPortal } from "react-dom";
 import logo from "../assets/logo.png";
@@ -19,11 +19,19 @@ import {
   IconSun,
 } from "@tabler/icons-react";
 
-function DropdownPortal({ isEditing, logOut, toggleUserSettings }) {
+function DropdownPortal({ isEditing, logOut, userId, setIsEditing, userData }) {
+  const navigate = useNavigate();
   if (!isEditing) return null;
+
+  const handleUserSettings = () => {
+    setIsEditing(false);
+    navigate('/user/settings', { state: { userId, userData } });
+  };
 
   return createPortal(
     <div className="font-rubik mt-12 w-48 text-black dark:text-white bg-white dark:bg-[#1f2937] rounded-md absolute z-50 top-5 right-5 shadow-md p-2">
+      <p onClick={handleUserSettings} className="p-2 opacity-50 cursor-pointer">User settings</p>
+      <div className="mt-2 w-full border border-[#a1a1a1] mx-auto"></div>
       <button onClick={logOut}>
         <p className="p-2 opacity-50">Logout</p>
       </button>
@@ -35,7 +43,9 @@ function DropdownPortal({ isEditing, logOut, toggleUserSettings }) {
 DropdownPortal.propTypes = {
   isEditing: PropTypes.bool.isRequired,
   logOut: PropTypes.func.isRequired,
-  toggleUserSettings: PropTypes.func.isRequired,
+  setIsEditing: PropTypes.func.isRequired,
+  userId: PropTypes.number.isRequired,
+  userData: PropTypes.object.isRequired,
 };
 
 function SearchPortal({
@@ -49,7 +59,7 @@ function SearchPortal({
   if (!isSearchOpen) return null;
 
   const handleResultClick = () => {
-    closeSearch(); // Close the search portal
+    closeSearch();
   };
 
   return createPortal(
@@ -113,25 +123,7 @@ function Layout() {
   const [templates, setTemplates] = useState([]);
   const [errors, setErrors] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    const token =
-      localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-    if (token) {
-      try {
-        const userData = jwtDecode(token);
-        setUserData(userData);
-      } catch (error) {
-        console.error("Invalid token:", error);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isLoggedIn && userData.role === "admin") {
-      setIsAdmin(true);
-    }
-  }, [isLoggedIn, userData.role]);
+  const [userId, setUserId] = useState(null);
 
   useEffect(() => {
     const fetchTemplates = async () => {
@@ -176,61 +168,40 @@ function Layout() {
       try {
         const decodedToken = jwtDecode(token);
         const currentTime = Math.floor(Date.now() / 1000);
+  
         if (decodedToken.exp < currentTime) {
           logOut();
         } else {
           setIsLoggedIn(true);
           setUserData(decodedToken);
-        }
-      } catch (error) {
-        console.error("Invalid token:", error);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    const token =
-      localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-    if (token) {
-      try {
-        const decodedToken = jwtDecode(token);
-        setIsLoggedIn(true);
-        setUserData(decodedToken);
-        if (decodedToken.theme) {
-          setDarkMode(decodedToken.theme === "dark");
-          if (decodedToken.theme === "dark") {
-            document.documentElement.classList.add("dark");
-          } else {
-            document.documentElement.classList.remove("dark");
+          setUserId(decodedToken.id);
+  
+          if (decodedToken.theme) {
+            setDarkMode(decodedToken.theme === "dark");
+            document.documentElement.classList.toggle("dark", decodedToken.theme === "dark");
           }
-        }
-        if (decodedToken.language) {
-          setLanguage(decodedToken.language);
+  
+          if (decodedToken.language) {
+            setLanguage(decodedToken.language);
+          }
         }
       } catch (error) {
         console.error("Invalid token:", error);
       }
     } else {
-      const preferredTheme = sessionStorage.getItem("theme");
-      if (!preferredTheme) {
-        const defaultTheme = "light";
-        sessionStorage.setItem("theme", defaultTheme);
-        setDarkMode(defaultTheme === "dark");
-        if (defaultTheme === "dark") {
-          document.documentElement.classList.add("dark");
-        } else {
-          document.documentElement.classList.remove("dark");
-        }
-      } else {
-        setDarkMode(preferredTheme === "dark");
-        if (preferredTheme === "dark") {
-          document.documentElement.classList.add("dark");
-        } else {
-          document.documentElement.classList.remove("dark");
-        }
-      }
+      const preferredTheme = sessionStorage.getItem("theme") || "light";
+      setDarkMode(preferredTheme === "dark");
+      document.documentElement.classList.toggle("dark", preferredTheme === "dark");
+      sessionStorage.setItem("theme", preferredTheme);
     }
   }, []);
+
+  useEffect(() => {
+    if (isLoggedIn && userData.role === "admin") {
+      setIsAdmin(true);
+    }
+  }, [isLoggedIn, userData.role]);
+  
 
   const toggleDarkMode = async () => {
     const newTheme = isDarkMode ? "light" : "dark";
@@ -439,7 +410,9 @@ function Layout() {
                 <DropdownPortal
                   isEditing={isEditing}
                   logOut={logOut}
-                  toggleUserSettings={toggleUserSettings}
+                  userId={userId}
+                  setIsEditing={setIsEditing}
+                  userData={userData}
                 />
               </>
             ) : (
@@ -459,7 +432,7 @@ function Layout() {
           <a href="/forms">
             <IconCheckupList width={34} color="#a1a1a1" stroke={2} />
           </a>
-          {isLoggedIn && userData.role === "admin" && (
+          {isAdmin && (
             <a href="/admin">
               <IconSettings width={34} color="#a1a1a1" stroke={2} />
             </a>

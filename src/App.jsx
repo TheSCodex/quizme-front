@@ -18,6 +18,7 @@ import Template from "./pages/Templates/TemplateDetails.jsx";
 import TemplateEdit from "./pages/Templates/TemplateEdit.jsx";
 import Users from "./pages/Admin/Users.jsx";
 import Form from "./pages/Forms/Form.jsx";
+import UserForm from "./pages/users/UserForm.jsx";
 
 const AppRoutes = () => {
   const authToken =
@@ -60,6 +61,14 @@ const AppRoutes = () => {
       children: [
         { path: "", element: <Home /> },
         { path: "templates", element: <Templates /> },
+        {
+          path: "user/settings",
+          element: (
+            <ProtectedRoute>
+              <UserForm />
+            </ProtectedRoute>
+          ),
+        },
         {
           path: "templates/new",
           element: (

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { IconPlus, IconFilter } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
@@ -13,6 +13,7 @@ function Templates() {
   const [selectedTags, setSelectedTags] = useState([]);
   const [errors, setErrors] = useState([]);
   const [userData, setUserData] = useState(null);
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     const token =
@@ -69,6 +70,19 @@ function Templates() {
 
     fetchTemplates();
   }, [userId, userData?.role]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownVisible(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const groupTemplatesByCategory = (templates) => {
     const grouped = {};
@@ -153,9 +167,9 @@ function Templates() {
           <a className="mr-2" href="/templates/new">
             <IconPlus stroke={2} />
           </a>
-          <IconFilter stroke={2} />
+          <IconFilter onClick={toggleDropdown} stroke={2} />
           {dropdownVisible && (
-            <div className="absolute right-0 mt-2 w-48 bg-white border rounded shadow-lg">
+            <div className="absolute right-0 mt-6 w-48 bg-white border rounded shadow-lg cursor-pointer">
               <div className="px-4 py-2 font-bold">Categories</div>
               {Object.keys(categories).map((category) => (
                 <div

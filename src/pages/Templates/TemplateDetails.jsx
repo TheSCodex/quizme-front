@@ -175,6 +175,12 @@ const TemplateDetails = () => {
       const newAnswerData = await response.json();
       setAnswers((prev) => [...prev, newAnswerData]);
       setNewAnswers({});
+      Swal.fire({
+        title: "Success!",
+        text: "Your answers have been sent successfully.",
+        icon: "success",
+        confirmButtonText: "OK",
+      });
     } catch (error) {
       console.error(error);
     }

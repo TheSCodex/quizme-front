@@ -153,11 +153,18 @@ function Layout() {
   const handleSearch = (event) => {
     const query = event.target.value;
     setSearchQuery(query);
-
-    const fuse = new Fuse(templates, { keys: ["title"] });
-    const results = fuse.search(query).map((result) => result.item);
+  
+    const accessibleTemplates = templates.filter(template =>
+      template.accessType === "public" ||
+      (template.accessType === "private" &&
+        template.authorizedUsers.some(user => user.id === userId))
+    );
+  
+    const fuse = new Fuse(accessibleTemplates, { keys: ["title"] });
+    const results = fuse.search(query).map(result => result.item);
     setSearchResults(results);
   };
+  
 
   const closeSearch = () => setSearchOpen(false);
 

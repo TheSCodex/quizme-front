@@ -32,12 +32,14 @@ function UserForm() {
         },
         body: JSON.stringify({ id: userId, ...formValues }),
       });
-  
+
       if (!response.ok) {
         throw new Error("Failed to update user data");
-      }  
-      const updatedUser = await response.json();  
-      const existingToken = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      }
+      const updatedUser = await response.json();
+      const existingToken =
+        localStorage.getItem("authToken") ||
+        sessionStorage.getItem("authToken");
       if (existingToken) {
         if (localStorage.getItem("authToken")) {
           localStorage.setItem("authToken", updatedUser.token);
@@ -46,7 +48,7 @@ function UserForm() {
         }
       } else {
         sessionStorage.setItem("authToken", updatedUser.token);
-      }      
+      }
       Swal.fire({
         icon: "success",
         title: "User updated successfully",
@@ -64,7 +66,66 @@ function UserForm() {
       });
     }
   };
-  
+
+  const handleSalesforceIntegration = async () => {
+    try {
+      const salesforceInstanceUrl = "https://arvaz-dev-ed.develop.my.salesforce.com";
+      const accessToken = import.meta.env.VITE_SALESFORCE_TOKEN;
+      const encodedAccessToken = encodeURIComponent(accessToken);
+      const accountData = {
+        Name: formValues.name,
+      };
+      const accountResponse = await fetch(
+        `${salesforceInstanceUrl}/services/data/v62.0/sobjects/Account/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(accountData),
+        }
+      );
+      if (!accountResponse.ok) {
+        throw new Error("Failed to create Account in Salesforce");
+      }
+      const account = await accountResponse.json();
+      const accountId = account.id;
+      const contactData = {
+        LastName: formValues.name,
+        Email: formValues.email,
+        AccountId: accountId,
+      };
+      const contactResponse = await fetch(
+        `${salesforceInstanceUrl}/services/data/v62.0/sobjects/Contact/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(contactData),
+        }
+      );
+      if (!contactResponse.ok) {
+        throw new Error("Failed to create Contact in Salesforce");
+      }
+      Swal.fire({
+        icon: "success",
+        title: "Salesforce Integration Successful",
+        text: "User information has been sent to Salesforce.",
+        confirmButtonText: "OK",
+      });
+    } catch (error) {
+      console.error("Error integrating with Salesforce:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Salesforce Integration Failed",
+        text: "An error occurred while sending data to Salesforce.",
+        confirmButtonText: "Try Again",
+      });
+    }
+  };
 
   const handleCancel = () => {
     setFormValues({
@@ -79,7 +140,10 @@ function UserForm() {
   return (
     <div>
       <p className="font-rubik text-lg md:text-xl">User Info</p>
-      <form onSubmit={handleSubmit} className="w-full mt-6 bg-white dark:bg-[#1f2937] rounded-md shadow-md p-4 md:p-8 grid grid-cols-1 gap-4">
+      <form
+        onSubmit={handleSubmit}
+        className="w-full mt-6 bg-white dark:bg-[#1f2937] rounded-md shadow-md p-4 md:p-8 grid grid-cols-1 gap-4"
+      >
         <input
           type="text"
           name="name"
@@ -126,6 +190,13 @@ function UserForm() {
             className="px-4 py-2 bg-blue-500 text-white rounded-md border-black/15"
           >
             Save Changes
+          </button>
+          <button
+            type="button"
+            onClick={handleSalesforceIntegration}
+            className="px-4 py-2 bg-green-500 text-white rounded-md border-black/15"
+          >
+            Send to Salesforce
           </button>
         </div>
       </form>
